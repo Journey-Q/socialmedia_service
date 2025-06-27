@@ -60,7 +60,7 @@ public class GlobalExceptionHandler {
     ApiError apiError = new ApiError(
             HttpStatus.UNAUTHORIZED.value(),
             "Authentication Failed",
-            "The password is wrong",
+            ex.getMessage(),  // ✅ Use the actual exception message!
             request.getRequestURI()
     );
     return new ResponseEntity<>(apiError, HttpStatus.UNAUTHORIZED);

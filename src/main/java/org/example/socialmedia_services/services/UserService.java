@@ -4,6 +4,7 @@ import org.example.socialmedia_services.dto.AuthResponse;
 import org.example.socialmedia_services.dto.LoginRequest;
 import org.example.socialmedia_services.dto.SignupRequest;
 import org.example.socialmedia_services.entity.User;
+import org.example.socialmedia_services.entity.UserPrincipal;
 import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,21 +64,40 @@ public class UserService {
 
     }
 
-  @Transactional
+    @Transactional
     public AuthResponse verify(LoginRequest req) {
-        Authentication authentication = authManager.authenticate(new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword()));
-        if (authentication.isAuthenticated()) {
-            User user = new User();
-            user = (User) authentication.getPrincipal();
+        try {
+            // Check if email exists first
+            boolean emailExists = repo.existsByEmail(req.getEmail());
+            if (!emailExists) {
+                throw new BadRequestException("Email does not exist");
+            }
+
+            // Email exists, now authenticate
+            Authentication authentication = authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
+            );
+
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            User user = userPrincipal.getUser();
             String token = jwtService.generateToken(user);
+
             AuthResponse authResponse = new AuthResponse();
             authResponse.setUser(user);
             authResponse.setAccessToken(token);
             authResponse.setExpiresIn(appConfig.getExpirationTime());
-            return authResponse;
-        } else {
-            throw new BadCredentialsException("Invalid username or password");
 
+            return authResponse;
+
+        } catch (BadRequestException e) {
+            throw e; // Re-throw email not found error
+        } catch (BadCredentialsException e) {
+            throw new BadCredentialsException("Incorrect password");
+        } catch (UsernameNotFoundException e) {
+            // This shouldn't happen since we check email existence first
+            throw new BadRequestException("Email does not exist");
+        } catch (Exception e) {
+            throw new RuntimeException("Authentication service unavailable", e);
         }
     }
 }
