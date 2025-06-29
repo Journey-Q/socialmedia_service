@@ -1,6 +1,7 @@
 package org.example.socialmedia_services.services;
 import org.example.socialmedia_services.config.AppConfig;
 import org.example.socialmedia_services.dto.AuthResponse;
+import org.example.socialmedia_services.dto.GooglesigninRequest;
 import org.example.socialmedia_services.dto.LoginRequest;
 import org.example.socialmedia_services.dto.SignupRequest;
 import org.example.socialmedia_services.entity.User;
@@ -64,7 +65,7 @@ public class UserService {
 
     }
 
-    @Transactional
+
     public AuthResponse verify(LoginRequest req) {
         try {
             // Check if email exists first
@@ -99,5 +100,32 @@ public class UserService {
         } catch (Exception e) {
             throw new RuntimeException("Authentication service unavailable", e);
         }
+    }
+
+    @Transactional
+    public AuthResponse google_register(GooglesigninRequest req) {
+
+        boolean emailExists = repo.existsByEmail(req.getEmail());
+        boolean usernameExists = repo.existsByUsername(req.getName());
+
+        if (emailExists && usernameExists) {
+            throw new BadRequestException("Both email and username are already in use");
+        } else if (emailExists) {
+            throw new BadRequestException("Email is already in use");
+        } else if (usernameExists) {
+            throw new BadRequestException("Username is already in use");
+        }
+        User user = new User();
+        user.setEmail(req.getEmail());
+        user.setUsername(req.getName());
+        user.setProfileUrl(req.getPhotourl());
+        repo.save(user);
+        String token = jwtService.generateToken(user);
+        AuthResponse authResponse = new AuthResponse();
+        authResponse.setUser(user);
+        authResponse.setAccessToken(token);
+        authResponse.setExpiresIn(appConfig.getExpirationTime());
+        return authResponse;
+
     }
 }
