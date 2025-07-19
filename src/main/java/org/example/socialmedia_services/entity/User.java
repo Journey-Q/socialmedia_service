@@ -34,6 +34,10 @@ public class User {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    private Boolean isPremium = false;
+
+    private Boolean isTripFluence = false;
+
     // Default constructor
     public User() {
         this.createdAt = LocalDateTime.now();
@@ -112,6 +116,19 @@ public class User {
 
     public void setProfileUrl(String profileUrl) {
         this.profileUrl = profileUrl;
+    }
+
+    public Boolean getIsPremium() {
+        return isPremium;
+    }
+    public void setIsPremium(Boolean isPremium) {
+        this.isPremium = isPremium;
+    }
+    public Boolean getIsTripFluence() {
+        return isTripFluence;
+    }
+    public void setIsTripFluence(Boolean isTripFluence) {
+        this.isTripFluence = isTripFluence;
     }
 
     @Override
