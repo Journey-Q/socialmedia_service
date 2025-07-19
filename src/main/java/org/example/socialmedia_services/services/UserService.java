@@ -106,14 +106,16 @@ public class UserService {
     public AuthResponse google_register(GooglesigninRequest req) {
 
         boolean emailExists = repo.existsByEmail(req.getEmail());
-        boolean usernameExists = repo.existsByUsername(req.getName());
 
-        if (emailExists && usernameExists) {
-            throw new BadRequestException("Both email and username are already in use");
-        } else if (emailExists) {
-            throw new BadRequestException("Email is already in use");
-        } else if (usernameExists) {
-            throw new BadRequestException("Username is already in use");
+
+        if (emailExists ) {
+            User user = repo.findByEmail(req.getEmail());
+            String token = jwtService.generateToken(user);
+            AuthResponse authResponse = new AuthResponse();
+            authResponse.setUser(user);
+            authResponse.setAccessToken(token);
+            authResponse.setExpiresIn(appConfig.getExpirationTime());
+            return authResponse;
         }
         User user = new User();
         user.setEmail(req.getEmail());
