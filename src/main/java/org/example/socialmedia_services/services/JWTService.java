@@ -17,13 +17,16 @@ public class JWTService {
 
     private final AppConfig appConfig;
 
+    // 3 months expiration time in milliseconds
+    private static final long THREE_MONTHS_IN_MS = 90L * 24 * 60 * 60 * 1000; // 90 days * 24 hours * 60 minutes * 60 seconds * 1000 ms
+
     public JWTService(AppConfig appConfig) {
         this.appConfig = appConfig;
     }
 
     public String generateToken(User user) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + appConfig.getAccessTokenExpirationMs());
+        Date expiryDate = new Date(now.getTime() + THREE_MONTHS_IN_MS); // 3 months from now
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("sub", String.valueOf(user.getUserId())); // Subject (user ID)
@@ -107,7 +110,6 @@ public class JWTService {
             return false; // Invalid token
         }
     }
-
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(appConfig.getJwtSecret());
