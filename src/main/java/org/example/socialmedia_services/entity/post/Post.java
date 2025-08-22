@@ -30,7 +30,9 @@ public class Post {
     @Column(name = "comments_count")
     private Integer commentsCount = 0;
 
-    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // Use @JoinColumn instead of mappedBy since PostContent doesn't have a post property
+    @OneToOne(cascade = {CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id") // This references the post_id in post_content table
     private PostContent postContent;
 
     // Default constructor

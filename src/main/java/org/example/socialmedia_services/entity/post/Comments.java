@@ -27,6 +27,9 @@ public class Comments {
     @Column(name = "comment_text", nullable = false, columnDefinition = "TEXT")
     private String commentText;
 
+    @Column(name = "parent_id")
+    private Long parentId; // For replies to comments
+
     @Column(name = "commented_at")
     @CreationTimestamp
     private LocalDateTime commentedAt;
@@ -36,12 +39,22 @@ public class Comments {
         this.commentedAt = LocalDateTime.now();
     }
 
-    // Constructor with parameters
+    // Constructor with parameters for top-level comments
     public Comments(Long postId, Long userId, String commentText) {
         this();
         this.postId = postId;
         this.userId = userId;
         this.commentText = commentText;
+        this.parentId = null; // Top-level comment
+    }
+
+    // Constructor with parameters for reply comments
+    public Comments(Long postId, Long userId, String commentText, Long parentId) {
+        this();
+        this.postId = postId;
+        this.userId = userId;
+        this.commentText = commentText;
+        this.parentId = parentId;
     }
 
     @Override
@@ -51,6 +64,7 @@ public class Comments {
                 ", postId=" + postId +
                 ", userId=" + userId +
                 ", commentText='" + commentText + '\'' +
+                ", parentId=" + parentId +
                 ", commentedAt=" + commentedAt +
                 '}';
     }

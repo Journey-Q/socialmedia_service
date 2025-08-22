@@ -53,8 +53,7 @@ public class PostService {
 
             // Create post content with the saved post's ID
             PostContent postContent = new PostContent();
-            postContent.setPost(savedPost);
-            postContent.setPostId(savedPost.getPostId()); // Set the same ID
+            postContent.setPostId(savedPost.getPostId()); // Set the post_id directly
             postContent.setJourneyTitle(request.getJourneyTitle());
             postContent.setNumberOfDays(request.getNumberOfDays());
             postContent.setPlacesVisited(request.getPlacesVisited());
@@ -64,14 +63,17 @@ public class PostService {
             postContent.setHotelRecommendations(request.getHotelRecommendations());
             postContent.setRestaurantRecommendations(request.getRestaurantRecommendations());
 
-            // Create place wise content list for cascade save
-            List<PlaceWiseContent> placeWiseContentList = new ArrayList<>();
+            // Save PostContent
+            PostContent savedPostContent = postContentRepository.save(postContent);
+
+            // Create and save place wise content entries
+            List<PlaceWiseContentDto> placeWiseContentDtos = new ArrayList<>();
 
             if (request.getPlaceWiseContent() != null && !request.getPlaceWiseContent().isEmpty()) {
                 int sequenceOrder = 1;
                 for (PlaceWiseContentDto placeDto : request.getPlaceWiseContent()) {
                     PlaceWiseContent placeContent = new PlaceWiseContent();
-                    placeContent.setPostId(savedPost.getPostId()); // Set post_id to reference PostContent
+                    placeContent.setPostId(savedPost.getPostId()); // Set post_id to reference Post
                     placeContent.setPlaceName(placeDto.getPlaceName());
                     placeContent.setLatitude(placeDto.getLatitude());
                     placeContent.setLongitude(placeDto.getLongitude());
@@ -82,23 +84,14 @@ public class PostService {
                     placeContent.setImageUrls(placeDto.getImageUrls());
                     placeContent.setSequenceOrder(sequenceOrder++);
 
-                    placeWiseContentList.add(placeContent);
+                    // Save each place wise content separately
+                    PlaceWiseContent savedPlaceContent = placeWiseContentRepository.save(placeContent);
+                    placeWiseContentDtos.add(convertToDto(savedPlaceContent));
                 }
             }
 
-            // Set the place wise content list to PostContent for cascade save
-            postContent.setPlaceWiseContentList(placeWiseContentList);
-
-            // Save PostContent (will cascade save PlaceWiseContent)
-            PostContent savedPostContent = postContentRepository.save(postContent);
-
-            // Update the post reference
+            // Update the post reference (bidirectional relationship)
             savedPost.setPostContent(savedPostContent);
-
-            // Convert place wise content to DTOs for response
-            List<PlaceWiseContentDto> placeWiseContentDtos = placeWiseContentList.stream()
-                    .map(this::convertToDto)
-                    .collect(Collectors.toList());
 
             // Create and return response
             GetPostResponse response = new GetPostResponse();
@@ -158,15 +151,22 @@ public class PostService {
         }
     }
 
+    // Optimized method to get post with all related data
+    @Transactional(readOnly = true)
     public GetPostResponse getPostById(Long postId) {
         try {
-            // Find the post
-            Optional<Post> postOptional = postRepository.findById(postId);
+            // Fetch post with all content in optimized queries
+            Optional<Post> postOptional = postRepository.findByIdWithAllContent(postId);
             if (postOptional.isEmpty()) {
                 throw new BadRequestException("Post not found");
             }
 
             Post post = postOptional.get();
+            PostContent postContent = post.getPostContent();
+
+            if (postContent == null) {
+                throw new BadRequestException("Post content not found");
+            }
 
             // Find the user who created the post
             Optional<User> userOptional = userRepository.findById(post.getCreatedById());
@@ -175,19 +175,13 @@ public class PostService {
             }
             User user = userOptional.get();
 
-            // Find post content
-            Optional<PostContent> contentOptional = postContentRepository.findByPostId(postId);
-            if (contentOptional.isEmpty()) {
-                throw new BadRequestException("Post content not found");
+            // Convert place wise content to DTOs
+            List<PlaceWiseContentDto> placeWiseContentDtos = new ArrayList<>();
+            if (postContent.getPlaceWiseContentList() != null) {
+                placeWiseContentDtos = postContent.getPlaceWiseContentList().stream()
+                        .map(this::convertToDto)
+                        .collect(Collectors.toList());
             }
-            PostContent postContent = contentOptional.get();
-
-            // Get place wise content using the relationship from PostContent
-            List<PlaceWiseContent> placeWiseContentList = postContent.getPlaceWiseContentList();
-            List<PlaceWiseContentDto> placeWiseContentDtos = placeWiseContentList != null ?
-                    placeWiseContentList.stream()
-                            .map(this::convertToDto)
-                            .collect(Collectors.toList()) : new ArrayList<>();
 
             // Create response
             GetPostResponse response = new GetPostResponse();
@@ -216,6 +210,128 @@ public class PostService {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to retrieve post", e);
+        }
+    }
+
+    // New method to get posts by user with all related data
+    @Transactional(readOnly = true)
+    public List<GetPostResponse> getPostsByUser(Long userId) {
+        try {
+            // Verify user exists
+            Optional<User> userOptional = userRepository.findById(userId);
+            if (userOptional.isEmpty()) {
+                throw new BadRequestException("User not found");
+            }
+            User user = userOptional.get();
+
+            // Fetch posts by user with all content
+            List<Post> posts = postRepository.findByUserIdWithAllContent(userId);
+
+            // Convert to response DTOs
+            List<GetPostResponse> responses = new ArrayList<>();
+            for (Post post : posts) {
+                PostContent postContent = post.getPostContent();
+
+                // Convert place wise content to DTOs
+                List<PlaceWiseContentDto> placeWiseContentDtos = new ArrayList<>();
+                if (postContent != null && postContent.getPlaceWiseContentList() != null) {
+                    placeWiseContentDtos = postContent.getPlaceWiseContentList().stream()
+                            .map(this::convertToDto)
+                            .collect(Collectors.toList());
+                }
+
+                // Create response
+                GetPostResponse response = new GetPostResponse();
+                response.setPostId(post.getPostId());
+                response.setCreatedById(post.getCreatedById());
+                response.setCreatorUsername(user.getUsername());
+                response.setCreatorProfileUrl(user.getProfileUrl());
+                response.setCreatedAt(post.getCreatedAt());
+                response.setLikesCount(post.getLikesCount());
+                response.setCommentsCount(post.getCommentsCount());
+
+                // Set post content details if available
+                if (postContent != null) {
+                    response.setJourneyTitle(postContent.getJourneyTitle());
+                    response.setNumberOfDays(postContent.getNumberOfDays());
+                    response.setPlacesVisited(postContent.getPlacesVisited());
+                    response.setPlaceWiseContent(placeWiseContentDtos);
+                    response.setBudgetInfo(postContent.getBudgetInfo());
+                    response.setTravelTips(postContent.getTravelTips());
+                    response.setTransportationOptions(postContent.getTransportationOptions());
+                    response.setHotelRecommendations(postContent.getHotelRecommendations());
+                    response.setRestaurantRecommendations(postContent.getRestaurantRecommendations());
+                }
+
+                responses.add(response);
+            }
+
+            return responses;
+
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve user posts", e);
+        }
+    }
+
+    // Method to get all posts for feed
+    @Transactional(readOnly = true)
+    public List<GetPostResponse> getAllPosts() {
+        try {
+            // Fetch all posts with content
+            List<Post> posts = postRepository.findAllPostsWithContent();
+
+            // Convert to response DTOs
+            List<GetPostResponse> responses = new ArrayList<>();
+            for (Post post : posts) {
+                // Get user info for each post
+                Optional<User> userOptional = userRepository.findById(post.getCreatedById());
+                if (userOptional.isEmpty()) {
+                    continue; // Skip posts with missing users
+                }
+                User user = userOptional.get();
+
+                PostContent postContent = post.getPostContent();
+
+                // Convert place wise content to DTOs
+                List<PlaceWiseContentDto> placeWiseContentDtos = new ArrayList<>();
+                if (postContent != null && postContent.getPlaceWiseContentList() != null) {
+                    placeWiseContentDtos = postContent.getPlaceWiseContentList().stream()
+                            .map(this::convertToDto)
+                            .collect(Collectors.toList());
+                }
+
+                // Create response
+                GetPostResponse response = new GetPostResponse();
+                response.setPostId(post.getPostId());
+                response.setCreatedById(post.getCreatedById());
+                response.setCreatorUsername(user.getUsername());
+                response.setCreatorProfileUrl(user.getProfileUrl());
+                response.setCreatedAt(post.getCreatedAt());
+                response.setLikesCount(post.getLikesCount());
+                response.setCommentsCount(post.getCommentsCount());
+
+                // Set post content details if available
+                if (postContent != null) {
+                    response.setJourneyTitle(postContent.getJourneyTitle());
+                    response.setNumberOfDays(postContent.getNumberOfDays());
+                    response.setPlacesVisited(postContent.getPlacesVisited());
+                    response.setPlaceWiseContent(placeWiseContentDtos);
+                    response.setBudgetInfo(postContent.getBudgetInfo());
+                    response.setTravelTips(postContent.getTravelTips());
+                    response.setTransportationOptions(postContent.getTransportationOptions());
+                    response.setHotelRecommendations(postContent.getHotelRecommendations());
+                    response.setRestaurantRecommendations(postContent.getRestaurantRecommendations());
+                }
+
+                responses.add(response);
+            }
+
+            return responses;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve all posts", e);
         }
     }
 

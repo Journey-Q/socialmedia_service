@@ -6,6 +6,7 @@ import org.example.socialmedia_services.dto.post.PostContentRequest;
 import org.example.socialmedia_services.entity.UserPrincipal;
 import org.example.socialmedia_services.services.post.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -13,6 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -76,4 +78,23 @@ public class PostController {
 
         return ResponseEntity.ok(responseData);
     }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<GetPostResponse>> getPostsByUser(@PathVariable Long userId) {
+
+            List<GetPostResponse> responses = postService.getPostsByUser(userId);
+            return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/feed")
+    public ResponseEntity<List<GetPostResponse>> getAllPosts() {
+        try {
+            List<GetPostResponse> responses = postService.getAllPosts();
+            return ResponseEntity.ok(responses);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
 }
