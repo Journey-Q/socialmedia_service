@@ -26,6 +26,8 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, String
 
 
 
+
+
     // Activity-based queries
     @Query("SELECT up FROM UserProfile up JOIN up.favouriteActivities fa WHERE fa IN :activities AND up.isActive = true")
     List<UserProfile> findByFavouriteActivities(@Param("activities") List<String> activities);
