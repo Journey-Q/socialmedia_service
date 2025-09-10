@@ -1,13 +1,19 @@
 package org.example.socialmedia_services.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
+@Getter
+@Setter
 public class User {
+
+    // Getters and Setters
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,6 +30,7 @@ public class User {
     @Column(name="profile_url")
     private String profileUrl;
 
+
     @Column(name = "created_at")
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -31,12 +38,17 @@ public class User {
     @Column(nullable = false)
     private String role= "USER";
 
+
     @Column(name = "is_active")
     private Boolean isActive = true;
 
     private Boolean isPremium = false;
 
     private Boolean isTripFluence = false;
+
+    private Boolean isSetup = false;
+
+
 
     // Default constructor
     public User() {
@@ -53,83 +65,14 @@ public class User {
         this.role = role;
     }
 
-    // Getters and Setters
-    public Long getUserId() {
-        return userId;
+    public void SetisSetup(boolean isSetup) {
+        this.isSetup = isSetup;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public boolean getIsSetup() {
+        return isSetup;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-    public Boolean getIsActive() {
-        return isActive;
-    }
-
-    public void setIsActive(Boolean isActive) {
-        this.isActive = isActive;
-    }
-
-    public String getProfileUrl() {
-        return profileUrl;
-    }
-
-    public void setProfileUrl(String profileUrl) {
-        this.profileUrl = profileUrl;
-    }
-
-    public Boolean getIsPremium() {
-        return isPremium;
-    }
-    public void setIsPremium(Boolean isPremium) {
-        this.isPremium = isPremium;
-    }
-    public Boolean getIsTripFluence() {
-        return isTripFluence;
-    }
-    public void setIsTripFluence(Boolean isTripFluence) {
-        this.isTripFluence = isTripFluence;
-    }
 
     @Override
     public String toString() {
@@ -140,6 +83,7 @@ public class User {
                 ", createdAt=" + createdAt +
                 ", role='" + role + '\'' +
                 ", isActive=" + isActive +
+
                 '}';
     }
 }
