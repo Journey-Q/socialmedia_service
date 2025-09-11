@@ -41,6 +41,10 @@ public interface UserStatsRepository extends JpaRepository<UserStats, String> {
     // Check if stats exist for a user
     boolean existsByUserId(String userId);
 
+    @Modifying
+    @Query("UPDATE UserStats us SET us.postsCount = us.postsCount + 1 WHERE us.userId = :userId")
+    int incrementPosts(@Param("userId") String userId);
+
     // Get users with most followers
     @Query("SELECT us FROM UserStats us ORDER BY us.followersCount DESC")
     List<UserStats> findTopUsersByFollowers();

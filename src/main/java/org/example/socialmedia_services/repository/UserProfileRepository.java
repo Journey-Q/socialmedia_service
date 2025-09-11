@@ -1,6 +1,7 @@
 package org.example.socialmedia_services.repository;
 
 import org.example.socialmedia_services.entity.UserProfile;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -24,9 +25,13 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, String
     @Query("SELECT COUNT(up) FROM UserProfile up WHERE up.setupCompleted = true AND up.isActive = true")
     long countCompletedProfiles();
 
-
-
-
+    // Search functionality for SearchService
+    @Query("SELECT up FROM UserProfile up WHERE " +
+            "LOWER(up.displayName) LIKE LOWER(CONCAT('%', :displayName, '%')) AND " +
+            "up.isActive = true")
+    List<UserProfile> findByDisplayNameContainingIgnoreCaseAndIsActiveTrue(
+            @Param("displayName") String displayName,
+            Pageable pageable);
 
     // Activity-based queries
     @Query("SELECT up FROM UserProfile up JOIN up.favouriteActivities fa WHERE fa IN :activities AND up.isActive = true")
@@ -58,6 +63,7 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, String
             "LOWER(up.bio) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) AND " +
             "up.isActive = true")
     List<UserProfile> searchProfiles(@Param("searchTerm") String searchTerm);
+
     // Statistics queries
     @Query("SELECT fa, COUNT(fa) FROM UserProfile up JOIN up.favouriteActivities fa WHERE up.isActive = true GROUP BY fa ORDER BY COUNT(fa) DESC")
     List<Object[]> getMostPopularActivities();

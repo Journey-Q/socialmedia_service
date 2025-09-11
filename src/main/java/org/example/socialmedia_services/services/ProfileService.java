@@ -1,10 +1,13 @@
 package org.example.socialmedia_services.services;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.socialmedia_services.dto.profile.ProfileResponseDTO;
 import org.example.socialmedia_services.dto.profile.ProfileSetupdtoRequest;
 import org.example.socialmedia_services.entity.UserProfile;
+import org.example.socialmedia_services.entity.follow.UserStats;
 import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.UserProfileRepository;
+import org.example.socialmedia_services.repository.follow.UserStatsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +20,7 @@ import java.util.Optional;
 public class ProfileService {
 
     private final UserProfileRepository userProfileRepository;
+    private final UserStatsRepository userStatsRepository;
 
     @Transactional
     public boolean completeUserSetup(ProfileSetupdtoRequest setupDTO) {
@@ -58,6 +62,8 @@ public class ProfileService {
 
         // Save to database
         UserProfile savedProfile = userProfileRepository.save(userProfile);
+        UserStats stats = new UserStats(setupDTO.getUserId());
+        UserStats saved_stats = userStatsRepository.save(stats);
 
         log.info("User setup completed successfully for user: {}", setupDTO.getUserId());
 
@@ -66,17 +72,19 @@ public class ProfileService {
     }
 
     @Transactional(readOnly = true)
-    public ProfileSetupdtoRequest getUserProfile(String userId) {
+    public ProfileResponseDTO getUserProfile(String userId) {
         UserProfile userProfile = userProfileRepository.findActiveByUserId(userId)
                 .orElseThrow(() -> new BadRequestException("Profile not found for user: " + userId));
 
-        return ProfileSetupdtoRequest.builder()
+        return ProfileResponseDTO.builder()
                 .userId(userProfile.getUserId())
                 .displayName(userProfile.getDisplayName())
                 .bio(userProfile.getBio())
                 .favouriteActivities(userProfile.getFavouriteActivities())
                 .preferredTripMoods(userProfile.getPreferredTripMoods())
                 .profileImageUrl(userProfile.getProfileImageUrl())
+                .isPremium(userProfile.getIsPremium())
+                .isTripFluence(userProfile.getIsTripFluence())
                 .build();
     }
 
