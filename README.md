@@ -1,7 +1,7 @@
 # 📱 SocialMedia Service
 
 A backend **microservice** that powers core social media features — user posts, comments, likes, and following relationships.  
-It is designed to be part of a larger **microservices architecture**.
+It is designed to be part of a larger **event-driven microservices architecture**.
 
 ---
 
@@ -15,25 +15,14 @@ It is designed to be part of a larger **microservices architecture**.
 
 ---
 
-socialmedia_service/
-├── .mvn/                       # Maven wrapper
-├── src/
-│   ├── main/
-│   │   ├── java/com/journeyq/socialmedia_service/
-│   │   │   ├── controller/     # REST controllers (API endpoints)
-│   │   │   ├── service/        # Business logic
-│   │   │   ├── model/          # Entities / domain models
-│   │   │   ├── repository/     # Data persistence (JPA repositories)
-│   │   │   └── config/         # Configurations (security, app configs)
-│   │   └── resources/
-│   │       ├── application.properties  # Database & app settings
-│   │       └── static/                 # Optional static resources
-│   └── test/java/com/journeyq/socialmedia_service/
-│           └── ... tests for services & controllers
-├── pom.xml                     # Maven dependencies & build config
-├── mvnw / mvnw.cmd             # Maven wrapper scripts
-└── .gitignore
+## 🏗️ Architecture
 
+- **Microservices-based** → Each core feature (auth, social, notifications, chat, etc.) is its own service.  
+- **Event-driven communication** → Services communicate asynchronously using **Apache Kafka**.  
+- **Pub/Sub model** → Events (e.g., *PostCreated*, *UserFollowed*) are published to Kafka topics, and other services subscribe to react (e.g., Notification service sends alerts).  
+
+
+---
 
 ## 🛠 Tech Stack
 
@@ -43,6 +32,15 @@ socialmedia_service/
 | Framework         | Spring Boot |
 | Build Tool        | Maven |
 | Database          | MySQL / PostgreSQL |
-| Authentication    | JWT-based authentication | Spring Security
+| Authentication    | Spring Security (JWT-based) |
+| Messaging / PubSub| Apache Kafka |
 | API Style         | RESTful APIs |
 
+---
+
+## 📌 Short Description
+
+**socialmedia_service** is a **Spring Boot microservice** that manages social media features like posts, comments, likes, and following.  
+It works in an **event-driven ecosystem** where actions (e.g., creating a post, following a user) are published as **Kafka events**, enabling other services (e.g., notifications, analytics, recommendations) to subscribe and react asynchronously.  
+
+---
