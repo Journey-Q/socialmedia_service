@@ -10,6 +10,9 @@ import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.follow.FollowRepository;
 import org.example.socialmedia_services.repository.UserProfileRepository;
 import org.example.socialmedia_services.repository.follow.UserStatsRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,341 +30,212 @@ public class FollowService {
     private final UserStatsRepository userStatsRepository;
 
     @Transactional
-    public Follow createFollow(String followingId, String followerId, String status) {
-        log.info("Creating follow request: {} -> {} with status: {}", followingId, followerId, status);
+    public Follow createFollow(String followingId, String followerId) {
+        log.info("Creating follow request: followingId={} wants to follow followerId={}", followingId, followerId);
 
-        // Validate input
         if (followingId.equals(followerId)) {
             throw new BadRequestException("Cannot follow yourself");
         }
 
-        // Check if both users exist
         if (!userProfileRepository.findActiveByUserId(followingId).isPresent()) {
-            throw new BadRequestException("Following user not found");
+            throw new BadRequestException("Your profile not found");
         }
         if (!userProfileRepository.findActiveByUserId(followerId).isPresent()) {
-            throw new BadRequestException("Follower user not found");
+            throw new BadRequestException("User to follow not found");
         }
 
-        // Check if follow relationship already exists
         Optional<Follow> existingFollow = followRepository.findFollowRelationship(followingId, followerId);
         if (existingFollow.isPresent()) {
-            throw new BadRequestException("Follow relationship already exists");
+            throw new BadRequestException("Follow request already sent or you already follow this user");
         }
 
-        // Create new follow relationship
         Follow newFollow = Follow.builder()
                 .followingId(followingId)
                 .followerId(followerId)
-                .status(status != null ? status : "pending")
+                .status("pending")
                 .build();
 
         Follow savedFollow = followRepository.save(newFollow);
 
-        // Create user stats if they don't exist
         createStatsIfNotExists(followingId);
         createStatsIfNotExists(followerId);
 
-        // IMPORTANT: Only update stats if status is accepted (direct acceptance)
-        if ("accepted".equals(status)) {
-            // followerId gets a new follower (the followingId user is following them)
-            int followersUpdated = userStatsRepository.incrementFollowers(followerId);
-            // followingId is now following someone (they're following followerId)
-            int followingUpdated = userStatsRepository.incrementFollowing(followingId);
-
-            log.info("Direct acceptance - Updated stats: followerId {} gained {} followers, followingId {} gained {} following",
-                    followerId, followersUpdated, followingId, followingUpdated);
-        }
-
-        log.info("Created follow relationship: {} -> {} with status: {}", followingId, followerId, status);
+        log.info("Follow request created: id={}, status=pending", savedFollow.getId());
         return savedFollow;
     }
 
-    @Transactional(readOnly = true)
-    public List<Follow> getFollowers(String followerId) {
-        return followRepository.getFollowers(followerId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Follow> getFollowing(String followingId) {
-        return followRepository.getFollowing(followingId);
-    }
-
     @Transactional
-    public boolean updateStatus(String followingId, String followerId, String status) {
-        log.info("Updating follow status: {} -> {} to {}", followingId, followerId, status);
+    public boolean acceptFollowRequest(String followingId, String currentUserId) {
+        log.info("Accepting follow request: followingId={} by followerId={}", followingId, currentUserId);
 
-        // Check if follow relationship exists
-        Optional<Follow> followOptional = followRepository.findFollowRelationship(followingId, followerId);
-        if (!followOptional.isPresent()) {
-            throw new BadRequestException("Follow relationship not found");
+        Optional<Follow> followOpt = followRepository.findFollowRelationship(followingId, currentUserId);
+
+        if (!followOpt.isPresent()) {
+            throw new BadRequestException("Follow request not found");
         }
 
-        Follow follow = followOptional.get();
-        String oldStatus = follow.getStatus();
+        Follow follow = followOpt.get();
 
-        // Update status
-        int updated = followRepository.updateStatus(followingId, followerId, status);
-
-        if (updated > 0) {
-            // Create stats if they don't exist
-            createStatsIfNotExists(followingId);
-            createStatsIfNotExists(followerId);
-
-            // Update stats based on status change
-            updateStatsOnStatusChange(followingId, followerId, oldStatus, status);
-            log.info("Updated follow status: {} -> {} from {} to {}", followingId, followerId, oldStatus, status);
-            return true;
+        if (!"pending".equals(follow.getStatus())) {
+            throw new BadRequestException("Follow request is not pending");
         }
 
-        return false;
-    }
+        follow.setStatus("accepted");
+        followRepository.save(follow);
 
-    @Transactional
-    public boolean deleteFollow(String followingId, String followerId) {
-        log.info("Deleting follow relationship: {} -> {}", followingId, followerId);
+        userStatsRepository.incrementFollowers(currentUserId);
+        userStatsRepository.incrementFollowing(followingId);
 
-        // Check if follow relationship exists and get its status
-        Optional<Follow> followOptional = followRepository.findFollowRelationship(followingId, followerId);
-        if (!followOptional.isPresent()) {
-            throw new BadRequestException("Follow relationship not found");
-        }
-
-        Follow follow = followOptional.get();
-        String status = follow.getStatus();
-
-        int deleted = followRepository.deleteFollow(followingId, followerId);
-
-        if (deleted > 0) {
-            // If the follow was accepted, decrement stats
-            if ("accepted".equals(status)) {
-                createStatsIfNotExists(followingId);
-                createStatsIfNotExists(followerId);
-
-                int followersUpdated = userStatsRepository.decrementFollowers(followerId);
-                int followingUpdated = userStatsRepository.decrementFollowing(followingId);
-
-                log.info("Follow deleted - Updated stats: followerId {} lost {} followers, followingId {} lost {} following",
-                        followerId, followersUpdated, followingId, followingUpdated);
-            }
-            log.info("Deleted follow relationship: {} -> {}", followingId, followerId);
-            return true;
-        }
-
-        return false;
-    }
-
-    // UserStats methods
-    @Transactional
-    public boolean createStats(String userId) {
-        if (userStatsRepository.existsByUserId(userId)) {
-            log.info("Stats already exist for user: {}", userId);
-            return false; // Stats already exist
-        }
-
-        UserStats userStats = new UserStats(userId);
-        userStatsRepository.save(userStats);
-        log.info("Created stats for user: {}", userId);
+        log.info("Follow request accepted: followingId={} now follows followerId={}", followingId, currentUserId);
         return true;
     }
 
     @Transactional
-    public boolean incrementFollowers(String userId) {
-        createStatsIfNotExists(userId);
-        int updated = userStatsRepository.incrementFollowers(userId);
-        log.info("Incremented followers for user {}: updated {} records", userId, updated);
-        return updated > 0;
+    public boolean rejectFollowRequest(String followingId, String currentUserId) {
+        log.info("Rejecting follow request: followingId={} by followerId={}", followingId, currentUserId);
+
+        Optional<Follow> followOpt = followRepository.findFollowRelationship(followingId, currentUserId);
+
+        if (!followOpt.isPresent()) {
+            throw new BadRequestException("Follow request not found");
+        }
+
+        Follow follow = followOpt.get();
+
+        if (!"pending".equals(follow.getStatus())) {
+            throw new BadRequestException("Follow request is not pending");
+        }
+
+        followRepository.delete(follow);
+
+        log.info("Follow request rejected and deleted: followingId={}", followingId);
+        return true;
     }
 
     @Transactional
-    public boolean decrementFollowers(String userId) {
-        createStatsIfNotExists(userId);
-        int updated = userStatsRepository.decrementFollowers(userId);
-        log.info("Decremented followers for user {}: updated {} records", userId, updated);
-        return updated > 0;
+    public boolean unfollowUser(String followingId, String followerId) {
+        log.info("Unfollowing: followingId={} wants to unfollow followerId={}", followingId, followerId);
+
+        Optional<Follow> followOpt = followRepository.findFollowRelationship(followingId, followerId);
+
+        if (!followOpt.isPresent()) {
+            throw new BadRequestException("You are not following this user");
+        }
+
+        Follow follow = followOpt.get();
+
+        if (!"accepted".equals(follow.getStatus())) {
+            throw new BadRequestException("Follow relationship is not active");
+        }
+
+        followRepository.delete(follow);
+
+        userStatsRepository.decrementFollowers(followerId);
+        userStatsRepository.decrementFollowing(followingId);
+
+        log.info("Unfollowed successfully: followingId={} unfollowed followerId={}", followingId, followerId);
+        return true;
     }
 
-    @Transactional
-    public boolean incrementFollowing(String userId) {
-        createStatsIfNotExists(userId);
-        int updated = userStatsRepository.incrementFollowing(userId);
-        log.info("Incremented following for user {}: updated {} records", userId, updated);
-        return updated > 0;
+    public FollowersListResponse getFollowersWithProfiles(String userId, int page, int size) {
+        log.info("Getting followers for userId={} with profiles", userId);
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Follow> followsPage = followRepository.findByFollowerIdAndStatus(userId, "accepted", pageable);
+
+        List<FollowerUserInfo> followers = followsPage.getContent().stream()
+                .map(follow -> {
+                    String followerId = follow.getFollowingId();
+                    Optional<UserProfile> profileOpt = userProfileRepository.findActiveByUserId(followerId);
+
+                    if (profileOpt.isPresent()) {
+                        UserProfile profile = profileOpt.get();
+                        return FollowerUserInfo.builder()
+                                .userId(followerId)
+                                .displayName(profile.getDisplayName())
+                                .profileImageUrl(profile.getProfileImageUrl())
+                                .build();
+                    }
+                    return null;
+                })
+                .filter(info -> info != null)
+                .collect(Collectors.toList());
+
+        return FollowersListResponse.builder()
+                .followers(followers)
+                .totalCount(followsPage.getTotalElements())
+                .currentPage(page)
+                .totalPages(followsPage.getTotalPages())
+                .build();
     }
 
-    @Transactional
-    public boolean decrementFollowing(String userId) {
-        createStatsIfNotExists(userId);
-        int updated = userStatsRepository.decrementFollowing(userId);
-        log.info("Decremented following for user {}: updated {} records", userId, updated);
-        return updated > 0;
+    public FollowingListResponse getFollowingWithProfiles(String userId, int page, int size) {
+        log.info("Getting following for userId={} with profiles", userId);
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Follow> followsPage = followRepository.findByFollowingIdAndStatus(userId, "accepted", pageable);
+
+        List<FollowingUserInfo> following = followsPage.getContent().stream()
+                .map(follow -> {
+                    String followedUserId = follow.getFollowerId();
+                    Optional<UserProfile> profileOpt = userProfileRepository.findActiveByUserId(followedUserId);
+
+                    if (profileOpt.isPresent()) {
+                        UserProfile profile = profileOpt.get();
+                        return FollowingUserInfo.builder()
+                                .userId(followedUserId)
+                                .displayName(profile.getDisplayName())
+                                .profileImageUrl(profile.getProfileImageUrl())
+                                .build();
+                    }
+                    return null;
+                })
+                .filter(info -> info != null)
+                .collect(Collectors.toList());
+
+        return FollowingListResponse.builder()
+                .following(following)
+                .totalCount(followsPage.getTotalElements())
+                .currentPage(page)
+                .totalPages(followsPage.getTotalPages())
+                .build();
     }
 
-    @Transactional(readOnly = true)
     public UserStatsResponse getStats(String userId) {
-        createStatsIfNotExists(userId);
+        log.info("Getting stats for userId={}", userId);
 
-        Optional<UserStats> statsOptional = userStatsRepository.findByUserId(userId);
+        Optional<UserStats> statsOpt = userStatsRepository.findById(userId);
 
-        if (statsOptional.isPresent()) {
-            UserStats stats = statsOptional.get();
-            log.info("Retrieved stats for user {}: followers={}, following={}",
-                    userId, stats.getFollowersCount(), stats.getFollowingCount());
+        if (statsOpt.isPresent()) {
+            UserStats stats = statsOpt.get();
             return UserStatsResponse.builder()
-                    .userId(stats.getUserId())
+                    .userId(userId)
                     .followersCount(stats.getFollowersCount())
                     .followingCount(stats.getFollowingCount())
+                    .postsCount(stats.getPostsCount())
                     .build();
-        } else {
-            // This shouldn't happen after createStatsIfNotExists, but just in case
-            log.warn("No stats found for user {} even after creation attempt", userId);
-            return UserStatsResponse.builder()
+        }
+
+        return UserStatsResponse.builder()
+                .userId(userId)
+                .followersCount(0)
+                .followingCount(0)
+                .postsCount(0)
+                .build();
+    }
+
+    private void createStatsIfNotExists(String userId) {
+        if (!userStatsRepository.findById(userId).isPresent()) {
+            UserStats stats = UserStats.builder()
                     .userId(userId)
                     .followersCount(0)
                     .followingCount(0)
+                    .postsCount(0)
                     .build();
-        }
-    }
-
-    // Additional helper methods
-    @Transactional(readOnly = true)
-    public FollowListResponse getFollowersWithProfiles(String followerId, int page, int size) {
-        List<Follow> follows = followRepository.getFollowers(followerId);
-        long totalCount = follows.size();
-
-        // Apply pagination
-        int start = page * size;
-        int end = Math.min(start + size, follows.size());
-        List<Follow> paginatedFollows = follows.subList(start, end);
-
-        List<UserFollowInfo> followers = paginatedFollows.stream()
-                .map(follow -> {
-                    Optional<UserProfile> profileOpt = userProfileRepository.findActiveByUserId(follow.getFollowingId());
-                    if (profileOpt.isPresent()) {
-                        UserProfile profile = profileOpt.get();
-                        boolean isMutual = followRepository.findFollowRelationshipByStatus(follow.getFollowingId(), followerId, "accepted").isPresent();
-
-                        return UserFollowInfo.builder()
-                                .userId(profile.getUserId())
-                                .displayName(profile.getDisplayName())
-                                .profileImageUrl(profile.getProfileImageUrl())
-                                .status(follow.getStatus())
-                                .isMutualFollow(isMutual)
-                                .createdAt(follow.getCreatedAt())
-                                .build();
-                    }
-                    return null;
-                })
-                .filter(userInfo -> userInfo != null)
-                .collect(Collectors.toList());
-
-        return FollowListResponse.builder()
-                .users(followers)
-                .totalCount(totalCount)
-                .page(page)
-                .size(size)
-                .build();
-    }
-
-    @Transactional(readOnly = true)
-    public FollowListResponse getFollowingWithProfiles(String followingId, int page, int size) {
-        List<Follow> follows = followRepository.getFollowing(followingId);
-        long totalCount = follows.size();
-
-        // Apply pagination
-        int start = page * size;
-        int end = Math.min(start + size, follows.size());
-        List<Follow> paginatedFollows = follows.subList(start, end);
-
-        List<UserFollowInfo> following = paginatedFollows.stream()
-                .map(follow -> {
-                    Optional<UserProfile> profileOpt = userProfileRepository.findActiveByUserId(follow.getFollowerId());
-                    if (profileOpt.isPresent()) {
-                        UserProfile profile = profileOpt.get();
-                        boolean isMutual = followRepository.findFollowRelationshipByStatus(followingId, follow.getFollowerId(), "accepted").isPresent();
-
-                        return UserFollowInfo.builder()
-                                .userId(profile.getUserId())
-                                .displayName(profile.getDisplayName())
-                                .profileImageUrl(profile.getProfileImageUrl())
-                                .status(follow.getStatus())
-                                .isMutualFollow(isMutual)
-                                .createdAt(follow.getCreatedAt())
-                                .build();
-                    }
-                    return null;
-                })
-                .filter(userInfo -> userInfo != null)
-                .collect(Collectors.toList());
-
-        return FollowListResponse.builder()
-                .users(following)
-                .totalCount(totalCount)
-                .page(page)
-                .size(size)
-                .build();
-    }
-
-    @Transactional(readOnly = true)
-    public List<Follow> getPendingFollowRequests(String followerId) {
-        return followRepository.getPendingFollowRequests(followerId);
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<Follow> getFollowRelationship(String followingId, String followerId) {
-        return followRepository.findFollowRelationship(followingId, followerId);
-    }
-
-    // Private helper methods
-    private void createStatsIfNotExists(String userId) {
-        if (!userStatsRepository.existsByUserId(userId)) {
-            createStats(userId);
-        }
-    }
-
-    private void updateStatsOnStatusChange(String followingId, String followerId, String oldStatus, String newStatus) {
-        log.info("Updating stats: followingId={}, followerId={}, oldStatus={}, newStatus={}", followingId, followerId, oldStatus, newStatus);
-
-        // Create stats if they don't exist
-        createStatsIfNotExists(followingId);
-        createStatsIfNotExists(followerId);
-
-        // If changing from non-accepted to accepted
-        if (!"accepted".equals(oldStatus) && "accepted".equals(newStatus)) {
-            // followerId gains a follower (someone is now following them)
-            int followersUpdated = userStatsRepository.incrementFollowers(followerId);
-            // followingId gains a following (they are now following someone)
-            int followingUpdated = userStatsRepository.incrementFollowing(followingId);
-
-            log.info("Stats incremented - followerId {} gained {} followers, followingId {} gained {} following",
-                    followerId, followersUpdated, followingId, followingUpdated);
-        }
-        // If changing from accepted to non-accepted (unfollowing)
-        else if ("accepted".equals(oldStatus) && !"accepted".equals(newStatus)) {
-            // followerId loses a follower
-            int followersUpdated = userStatsRepository.decrementFollowers(followerId);
-            // followingId loses a following
-            int followingUpdated = userStatsRepository.decrementFollowing(followingId);
-
-            log.info("Stats decremented - followerId {} lost {} followers, followingId {} lost {} following",
-                    followerId, followersUpdated, followingId, followingUpdated);
-        }
-
-        // Log current stats after update
-        try {
-            UserStats followerStats = userStatsRepository.findByUserId(followerId).orElse(null);
-            UserStats followingStats = userStatsRepository.findByUserId(followingId).orElse(null);
-
-            if (followerStats != null) {
-                log.info("Updated stats for followerId {}: followers={}, following={}",
-                        followerId, followerStats.getFollowersCount(), followerStats.getFollowingCount());
-            }
-            if (followingStats != null) {
-                log.info("Updated stats for followingId {}: followers={}, following={}",
-                        followingId, followingStats.getFollowersCount(), followingStats.getFollowingCount());
-            }
-        } catch (Exception e) {
-            log.warn("Error logging updated stats", e);
+            userStatsRepository.save(stats);
+            log.info("Created stats for userId={}", userId);
         }
     }
 }
