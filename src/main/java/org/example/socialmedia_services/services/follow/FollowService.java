@@ -65,10 +65,10 @@ public class FollowService {
     }
 
     @Transactional
-    public boolean acceptFollowRequest(String followingId, String currentUserId) {
-        log.info("Accepting follow request: followingId={} by followerId={}", followingId, currentUserId);
+    public boolean acceptFollowRequest(Long followId, String currentUserId) {
+        log.info("Accepting follow request: followId={} by userId={}", followId, currentUserId);
 
-        Optional<Follow> followOpt = followRepository.findFollowRelationship(followingId, currentUserId);
+        Optional<Follow> followOpt = followRepository.findById(followId);
 
         if (!followOpt.isPresent()) {
             throw new BadRequestException("Follow request not found");
@@ -76,25 +76,35 @@ public class FollowService {
 
         Follow follow = followOpt.get();
 
+        // Verify that the current user is the one being followed (follower)
+        if (!follow.getFollowerId().equals(currentUserId)) {
+            throw new BadRequestException("You are not authorized to accept this follow request");
+        }
+
         if (!"pending".equals(follow.getStatus())) {
             throw new BadRequestException("Follow request is not pending");
         }
 
+        // Update status to accepted
         follow.setStatus("accepted");
         followRepository.save(follow);
 
+        // Update stats:
+        // currentUserId (follower) gains a follower
+        // followingId gains someone they're following
         userStatsRepository.incrementFollowers(currentUserId);
-        userStatsRepository.incrementFollowing(followingId);
+        userStatsRepository.incrementFollowing(follow.getFollowingId());
 
-        log.info("Follow request accepted: followingId={} now follows followerId={}", followingId, currentUserId);
+        log.info("Follow request accepted: followId={}, followingId={} now follows followerId={}",
+                followId, follow.getFollowingId(), currentUserId);
         return true;
     }
 
     @Transactional
-    public boolean rejectFollowRequest(String followingId, String currentUserId) {
-        log.info("Rejecting follow request: followingId={} by followerId={}", followingId, currentUserId);
+    public boolean rejectFollowRequest(Long followId, String currentUserId) {
+        log.info("Rejecting follow request: followId={} by userId={}", followId, currentUserId);
 
-        Optional<Follow> followOpt = followRepository.findFollowRelationship(followingId, currentUserId);
+        Optional<Follow> followOpt = followRepository.findById(followId);
 
         if (!followOpt.isPresent()) {
             throw new BadRequestException("Follow request not found");
@@ -102,13 +112,19 @@ public class FollowService {
 
         Follow follow = followOpt.get();
 
+        // Verify that the current user is the one being followed (follower)
+        if (!follow.getFollowerId().equals(currentUserId)) {
+            throw new BadRequestException("You are not authorized to reject this follow request");
+        }
+
         if (!"pending".equals(follow.getStatus())) {
             throw new BadRequestException("Follow request is not pending");
         }
 
+        // Delete the follow request
         followRepository.delete(follow);
 
-        log.info("Follow request rejected and deleted: followingId={}", followingId);
+        log.info("Follow request rejected and deleted: followId={}", followId);
         return true;
     }
 
@@ -200,6 +216,41 @@ public class FollowService {
                 .totalCount(followsPage.getTotalElements())
                 .currentPage(page)
                 .totalPages(followsPage.getTotalPages())
+                .build();
+    }
+
+    public FollowRequestsListResponse getPendingFollowRequests(String userId, int page, int size) {
+        log.info("Getting pending follow requests for userId={}", userId);
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Follow> requestsPage = followRepository.findByFollowerIdAndStatus(userId, "pending", pageable);
+
+        List<FollowRequestUserInfo> requests = requestsPage.getContent().stream()
+                .map(follow -> {
+                    String requesterId = follow.getFollowingId();
+                    Optional<UserProfile> profileOpt = userProfileRepository.findActiveByUserId(requesterId);
+
+                    if (profileOpt.isPresent()) {
+                        UserProfile profile = profileOpt.get();
+                        return FollowRequestUserInfo.builder()
+                                .followId(follow.getId())
+                                .userId(requesterId)
+                                .displayName(profile.getDisplayName())
+                                .profileImageUrl(profile.getProfileImageUrl())
+                                .requestedAt(follow.getCreatedAt())
+                                .build();
+                    }
+                    return null;
+                })
+                .filter(info -> info != null)
+                .collect(Collectors.toList());
+
+        return FollowRequestsListResponse.builder()
+                .requests(requests)
+                .totalCount(requestsPage.getTotalElements())
+                .currentPage(page)
+                .totalPages(requestsPage.getTotalPages())
                 .build();
     }
 

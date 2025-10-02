@@ -54,7 +54,6 @@ public class ProfileController {
         responseData.put("success", true);
         responseData.put("message", "Profile setup complete");
         // Add any other data the frontend might need
-
         return ResponseEntity.ok(responseData);
     }
 

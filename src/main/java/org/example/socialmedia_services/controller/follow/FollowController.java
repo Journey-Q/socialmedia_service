@@ -35,11 +35,11 @@ public class FollowController {
         return ResponseEntity.ok(responseData);
     }
 
-    @PostMapping("/accept-request")
-    public ResponseEntity<?> acceptFollowRequest(@RequestParam String followingId) {
+    @PostMapping("/accept-request/{followId}")
+    public ResponseEntity<?> acceptFollowRequest(@PathVariable Long followId) {
         String currentUserId = getCurrentUserId();
 
-        boolean success = followService.acceptFollowRequest(followingId, currentUserId);
+        boolean success = followService.acceptFollowRequest(followId, currentUserId);
 
         Map<String, Object> responseData = new HashMap<>();
         responseData.put("success", success);
@@ -48,11 +48,11 @@ public class FollowController {
         return ResponseEntity.ok(responseData);
     }
 
-    @PostMapping("/reject-request")
-    public ResponseEntity<?> rejectFollowRequest(@RequestParam String followingId) {
+    @PostMapping("/reject-request/{followId}")
+    public ResponseEntity<?> rejectFollowRequest(@PathVariable Long followId) {
         String currentUserId = getCurrentUserId();
 
-        boolean success = followService.rejectFollowRequest(followingId, currentUserId);
+        boolean success = followService.rejectFollowRequest(followId, currentUserId);
 
         Map<String, Object> responseData = new HashMap<>();
         responseData.put("success", success);
@@ -100,6 +100,21 @@ public class FollowController {
         Map<String, Object> responseData = new HashMap<>();
         responseData.put("success", true);
         responseData.put("data", following);
+
+        return ResponseEntity.ok(responseData);
+    }
+
+    @GetMapping("/pending-requests")
+    public ResponseEntity<?> getPendingFollowRequests(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        String currentUserId = getCurrentUserId();
+        FollowRequestsListResponse requests = followService.getPendingFollowRequests(currentUserId, page, size);
+
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("success", true);
+        responseData.put("data", requests);
 
         return ResponseEntity.ok(responseData);
     }
