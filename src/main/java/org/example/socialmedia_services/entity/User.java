@@ -12,9 +12,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 public class User {
-
-    // Getters and Setters
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
@@ -42,9 +39,7 @@ public class User {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
-    private Boolean isPremium = false;
 
-    private Boolean isTripFluence = false;
 
     private Boolean isSetup = false;
 

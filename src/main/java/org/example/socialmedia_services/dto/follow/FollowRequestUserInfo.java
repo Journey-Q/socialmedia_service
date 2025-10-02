@@ -5,14 +5,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserStatsResponse {
+public class FollowRequestUserInfo {
 
+    private Long followId;  // Added for accept/reject operations
     private String userId;
-    private Integer followersCount;
-    private Integer followingCount;
-    private Integer postsCount;
+    private String displayName;
+    private String profileImageUrl;
+    private LocalDateTime requestedAt;
 }

@@ -21,6 +21,9 @@ public class UserStats {
     @Builder.Default
     private Integer followersCount = 0;
 
+    @Column(name="posts_count")
+    private Integer postsCount = 0;
+
     @Column(name = "following_count", nullable = false)
     @Builder.Default
     private Integer followingCount = 0;

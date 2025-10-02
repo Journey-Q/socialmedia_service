@@ -2,6 +2,7 @@ package org.example.socialmedia_services.controller;
 
 
 import jakarta.validation.Valid;
+import org.example.socialmedia_services.dto.profile.ProfileResponseDTO;
 import org.example.socialmedia_services.dto.profile.ProfileSetupdtoRequest;
 import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.services.ProfileService;
@@ -29,7 +30,7 @@ public class ProfileController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getProfile(@PathVariable String id) {
 
-            ProfileSetupdtoRequest profile = profileService.getUserProfile(id);
+            ProfileResponseDTO profile = profileService.getUserProfile(id);
 
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("success", true);
@@ -53,7 +54,6 @@ public class ProfileController {
         responseData.put("success", true);
         responseData.put("message", "Profile setup complete");
         // Add any other data the frontend might need
-
         return ResponseEntity.ok(responseData);
     }
 
