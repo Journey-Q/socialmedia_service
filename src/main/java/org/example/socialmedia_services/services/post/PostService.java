@@ -1,6 +1,7 @@
 package org.example.socialmedia_services.services.post;
 
 import org.example.socialmedia_services.dto.post.GetPostResponse;
+import org.example.socialmedia_services.dto.post.GetPostUserResponse;
 import org.example.socialmedia_services.dto.post.PlaceWiseContentDto;
 import org.example.socialmedia_services.dto.post.PostContentRequest;
 import org.example.socialmedia_services.entity.User;
@@ -9,6 +10,7 @@ import org.example.socialmedia_services.entity.post.Post;
 import org.example.socialmedia_services.entity.post.PostContent;
 import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.UserRepo;
+import org.example.socialmedia_services.repository.follow.UserStatsRepository;
 import org.example.socialmedia_services.repository.post.PlaceWiseContentRepository;
 import org.example.socialmedia_services.repository.post.PostContentRepository;
 import org.example.socialmedia_services.repository.post.PostRepository;
@@ -34,6 +36,9 @@ public class PostService {
     private PlaceWiseContentRepository placeWiseContentRepository;
 
     @Autowired
+    private UserStatsRepository userStatsRepo;
+
+    @Autowired
     private UserRepo userRepository;
 
     @Transactional
@@ -50,6 +55,7 @@ public class PostService {
             Post post = new Post();
             post.setCreatedById(userId);
             Post savedPost = postRepository.save(post);
+            int res = userStatsRepo.incrementPosts(String.valueOf(userId));
 
             // Create post content with the saved post's ID
             PostContent postContent = new PostContent();
@@ -215,7 +221,7 @@ public class PostService {
 
     // New method to get posts by user with all related data
     @Transactional(readOnly = true)
-    public List<GetPostResponse> getPostsByUser(Long userId) {
+    public List<GetPostUserResponse> getPostsByUser(Long userId) {
         try {
             // Verify user exists
             Optional<User> userOptional = userRepository.findById(userId);
@@ -227,40 +233,31 @@ public class PostService {
             // Fetch posts by user with all content
             List<Post> posts = postRepository.findByUserIdWithAllContent(userId);
 
-            // Convert to response DTOs
-            List<GetPostResponse> responses = new ArrayList<>();
+            // Convert to simplified response DTOs
+            List<GetPostUserResponse> responses = new ArrayList<>();
             for (Post post : posts) {
                 PostContent postContent = post.getPostContent();
 
-                // Convert place wise content to DTOs
-                List<PlaceWiseContentDto> placeWiseContentDtos = new ArrayList<>();
-                if (postContent != null && postContent.getPlaceWiseContentList() != null) {
-                    placeWiseContentDtos = postContent.getPlaceWiseContentList().stream()
-                            .map(this::convertToDto)
-                            .collect(Collectors.toList());
-                }
+                // Create simplified response
+                GetPostUserResponse response = new GetPostUserResponse();
+                response.setId(String.valueOf(post.getPostId()));
 
-                // Create response
-                GetPostResponse response = new GetPostResponse();
-                response.setPostId(post.getPostId());
-                response.setCreatedById(post.getCreatedById());
-                response.setCreatorUsername(user.getUsername());
-                response.setCreatorProfileUrl(user.getProfileUrl());
-                response.setCreatedAt(post.getCreatedAt());
-                response.setLikesCount(post.getLikesCount());
-                response.setCommentsCount(post.getCommentsCount());
-
-                // Set post content details if available
                 if (postContent != null) {
+                    // Set journey title
                     response.setJourneyTitle(postContent.getJourneyTitle());
-                    response.setNumberOfDays(postContent.getNumberOfDays());
-                    response.setPlacesVisited(postContent.getPlacesVisited());
-                    response.setPlaceWiseContent(placeWiseContentDtos);
-                    response.setBudgetInfo(postContent.getBudgetInfo());
-                    response.setTravelTips(postContent.getTravelTips());
-                    response.setTransportationOptions(postContent.getTransportationOptions());
-                    response.setHotelRecommendations(postContent.getHotelRecommendations());
-                    response.setRestaurantRecommendations(postContent.getRestaurantRecommendations());
+
+                    // Set location - use first place with address or create from places visited
+                    String location = getLocationString(postContent);
+                    response.setLocation(location);
+
+                    // Set post images - get first place image as cover
+                    List<String> postImages = getFirstPlaceImages(postContent);
+                    response.setPostImages(postImages);
+                } else {
+                    // Fallback values if post content is null
+                    response.setJourneyTitle("Untitled Journey");
+                    response.setLocation("Unknown Location");
+                    response.setPostImages(new ArrayList<>());
                 }
 
                 responses.add(response);
@@ -271,7 +268,7 @@ public class PostService {
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to retrieve user posts", e);
+            throw new RuntimeException("Error fetching user posts: " + e.getMessage(), e);
         }
     }
 
@@ -333,6 +330,43 @@ public class PostService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to retrieve all posts", e);
         }
+    }
+
+    // Helper method to get location string for simplified response
+    private String getLocationString(PostContent postContent) {
+        // Try to get location from first place with address
+        if (postContent.getPlaceWiseContentList() != null && !postContent.getPlaceWiseContentList().isEmpty()) {
+            PlaceWiseContent firstPlace = postContent.getPlaceWiseContentList().get(0);
+            if (firstPlace.getAddress() != null && !firstPlace.getAddress().trim().isEmpty()) {
+                return firstPlace.getAddress();
+            }
+            if (firstPlace.getPlaceName() != null && !firstPlace.getPlaceName().trim().isEmpty()) {
+                return firstPlace.getPlaceName();
+            }
+        }
+
+        // Fallback to places visited list
+        if (postContent.getPlacesVisited() != null && !postContent.getPlacesVisited().isEmpty()) {
+            return String.join(", ", postContent.getPlacesVisited());
+        }
+
+        return "Unknown Location";
+    }
+
+    // Helper method to get first place images for simplified response
+    private List<String> getFirstPlaceImages(PostContent postContent) {
+        List<String> postImages = new ArrayList<>();
+
+        // Get images from first place
+        if (postContent.getPlaceWiseContentList() != null && !postContent.getPlaceWiseContentList().isEmpty()) {
+            PlaceWiseContent firstPlace = postContent.getPlaceWiseContentList().get(0);
+            if (firstPlace.getImageUrls() != null && !firstPlace.getImageUrls().isEmpty()) {
+                // Add the first image as cover
+                postImages.add(firstPlace.getImageUrls().get(0));
+            }
+        }
+
+        return postImages;
     }
 
     // Helper method to convert PlaceWiseContent entity to DTO

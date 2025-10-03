@@ -58,6 +58,10 @@ public class UserProfile {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    private Boolean isPremium = false;
+
+    private Boolean isTripFluence = false;
+
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;

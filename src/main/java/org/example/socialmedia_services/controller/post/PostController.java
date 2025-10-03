@@ -2,6 +2,7 @@ package org.example.socialmedia_services.controller.post;
 
 import jakarta.validation.Valid;
 import org.example.socialmedia_services.dto.post.GetPostResponse;
+import org.example.socialmedia_services.dto.post.GetPostUserResponse;
 import org.example.socialmedia_services.dto.post.PostContentRequest;
 import org.example.socialmedia_services.entity.UserPrincipal;
 import org.example.socialmedia_services.services.post.PostService;
@@ -80,9 +81,9 @@ public class PostController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<GetPostResponse>> getPostsByUser(@PathVariable Long userId) {
+    public ResponseEntity<List<GetPostUserResponse>> getPostsByUser(@PathVariable Long userId) {
 
-            List<GetPostResponse> responses = postService.getPostsByUser(userId);
+            List<GetPostUserResponse> responses = postService.getPostsByUser(userId);
             return ResponseEntity.ok(responses);
     }
 

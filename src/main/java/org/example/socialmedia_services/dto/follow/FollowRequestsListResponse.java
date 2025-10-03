@@ -1,18 +1,20 @@
-// FollowRequest.java
 package org.example.socialmedia_services.dto.follow;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FollowRequest {
+public class FollowRequestsListResponse {
 
-    @NotBlank(message = "Follower ID is required")
-    private String followerId;
+    private List<FollowRequestUserInfo> requests;
+    private long totalCount;
+    private int currentPage;
+    private int totalPages;
 }

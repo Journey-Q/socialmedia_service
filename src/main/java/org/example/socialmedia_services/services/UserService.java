@@ -1,9 +1,6 @@
 package org.example.socialmedia_services.services;
 import org.example.socialmedia_services.config.AppConfig;
-import org.example.socialmedia_services.dto.AuthResponse;
-import org.example.socialmedia_services.dto.GooglesigninRequest;
-import org.example.socialmedia_services.dto.LoginRequest;
-import org.example.socialmedia_services.dto.SignupRequest;
+import org.example.socialmedia_services.dto.*;
 import org.example.socialmedia_services.entity.User;
 import org.example.socialmedia_services.entity.UserPrincipal;
 import org.example.socialmedia_services.exception.BadRequestException;
@@ -129,5 +126,11 @@ public class UserService {
         authResponse.setExpiresIn(appConfig.getExpirationTime());
         return authResponse;
 
+    }
+
+    @Transactional
+    public boolean setSetup(Long userid) {
+       int issetup = repo.setIsSetup(userid);
+       return true;
     }
 }

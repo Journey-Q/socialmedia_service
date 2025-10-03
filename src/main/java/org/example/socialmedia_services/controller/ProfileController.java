@@ -2,12 +2,15 @@ package org.example.socialmedia_services.controller;
 
 
 import jakarta.validation.Valid;
+import org.example.socialmedia_services.dto.profile.ProfileResponseDTO;
 import org.example.socialmedia_services.dto.profile.ProfileSetupdtoRequest;
 import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.services.ProfileService;
+import org.example.socialmedia_services.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.parameters.P;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,11 +24,13 @@ public class ProfileController {
 
     @Autowired
     private ProfileService profileService;
+    @Autowired
+    private UserService userService;
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getProfile(@PathVariable String id) {
 
-            ProfileSetupdtoRequest profile = profileService.getUserProfile(id);
+            ProfileResponseDTO profile = profileService.getUserProfile(id);
 
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("success", true);
@@ -37,17 +42,18 @@ public class ProfileController {
     }
 
     @PostMapping("/setup")
+    @Transactional
     public ResponseEntity<?> completeUserSetup(
             @Valid @RequestBody ProfileSetupdtoRequest setupDTO) {
 
         boolean response = profileService.completeUserSetup(setupDTO);
+        boolean status = userService.setSetup(Long.valueOf(setupDTO.getUserId()));
 
         // Return a JSON object instead of a string
         Map<String, Object> responseData = new HashMap<>();
         responseData.put("success", true);
         responseData.put("message", "Profile setup complete");
         // Add any other data the frontend might need
-
         return ResponseEntity.ok(responseData);
     }
 
