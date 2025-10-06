@@ -10,6 +10,7 @@ import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.follow.FollowRepository;
 import org.example.socialmedia_services.repository.UserProfileRepository;
 import org.example.socialmedia_services.repository.follow.UserStatsRepository;
+import org.example.socialmedia_services.services.kafka.KafkaProducerService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,7 @@ public class FollowService {
     private final FollowRepository followRepository;
     private final UserProfileRepository userProfileRepository;
     private final UserStatsRepository userStatsRepository;
+    private final KafkaProducerService kafkaProducerService;
 
     @Transactional
     public Follow createFollow(String followingId, String followerId) {
@@ -59,6 +61,9 @@ public class FollowService {
 
         createStatsIfNotExists(followingId);
         createStatsIfNotExists(followerId);
+
+        // Send Kafka event for follow request
+        sendFollowEventToKafka(followingId, followerId);
 
         log.info("Follow request created: id={}, status=pending", savedFollow.getId());
         return savedFollow;
@@ -287,6 +292,28 @@ public class FollowService {
                     .build();
             userStatsRepository.save(stats);
             log.info("Created stats for userId={}", userId);
+        }
+    }
+
+    private void sendFollowEventToKafka(String senderId, String receiverId) {
+        try {
+            // Get sender's profile
+            Optional<UserProfile> senderProfileOpt = userProfileRepository.findActiveByUserId(senderId);
+            if (senderProfileOpt.isEmpty()) {
+                return; // Skip sending event if sender profile not found
+            }
+            UserProfile senderProfile = senderProfileOpt.get();
+
+            // Send Kafka event
+            kafkaProducerService.sendFollowEvent(
+                    senderId,
+                    receiverId,
+                    senderProfile.getDisplayName(),
+                    senderProfile.getProfileImageUrl()
+            );
+        } catch (Exception e) {
+            // Log but don't fail the follow operation if Kafka event fails
+            // The exception is already logged in KafkaProducerService
         }
     }
 }

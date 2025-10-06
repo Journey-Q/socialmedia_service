@@ -3,10 +3,12 @@ package org.example.socialmedia_services.services.post;
 import org.example.socialmedia_services.entity.UserProfile;
 import org.example.socialmedia_services.entity.post.Comments;
 import org.example.socialmedia_services.entity.post.Post;
+import org.example.socialmedia_services.entity.post.PostContent;
 import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.UserProfileRepository;
 import org.example.socialmedia_services.repository.post.CommentRepository;
 import org.example.socialmedia_services.repository.post.PostRepository;
+import org.example.socialmedia_services.services.kafka.KafkaProducerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,9 @@ public class CommentService {
 
     @Autowired
     private UserProfileRepository userProfileRepository;
+
+    @Autowired
+    private KafkaProducerService kafkaProducerService;
 
     @Transactional
     public Comments addComment(Long postId, Long userId, String commentText) {
@@ -58,6 +63,9 @@ public class CommentService {
             // Update comments count
             post.setCommentsCount(post.getCommentsCount() + 1);
             postRepository.save(post);
+
+            // Send Kafka event for comment
+            sendCommentEventToKafka(userId, post, savedComment, userOptional.get());
 
             return savedComment;
 
@@ -107,6 +115,9 @@ public class CommentService {
             // Update comments count
             post.setCommentsCount(post.getCommentsCount() + 1);
             postRepository.save(post);
+
+            // Send Kafka event for reply comment
+            sendCommentEventToKafka(userId, post, savedReplyComment, userOptional.get());
 
             return savedReplyComment;
 
@@ -260,6 +271,32 @@ public class CommentService {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to get replies", e);
+        }
+    }
+
+    private void sendCommentEventToKafka(Long senderId, Post post, Comments comment, UserProfile senderProfile) {
+        try {
+            // Get post content for post name
+            String postName = null;
+            PostContent postContent = post.getPostContent();
+            if (postContent != null && postContent.getJourneyTitle() != null) {
+                postName = postContent.getJourneyTitle();
+            }
+
+            // Send Kafka event
+            kafkaProducerService.sendCommentEvent(
+                    String.valueOf(senderId),
+                    String.valueOf(post.getCreatedById()),
+                    senderProfile.getDisplayName(),
+                    senderProfile.getProfileImageUrl(),
+                    String.valueOf(post.getPostId()),
+                    postName,
+                    String.valueOf(comment.getCommentId()),
+                    comment.getCommentText()
+            );
+        } catch (Exception e) {
+            // Log but don't fail the comment operation if Kafka event fails
+            // The exception is already logged in KafkaProducerService
         }
     }
 }
