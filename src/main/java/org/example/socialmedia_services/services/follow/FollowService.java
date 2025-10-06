@@ -282,6 +282,40 @@ public class FollowService {
                 .build();
     }
 
+    public boolean isFollowing(String currentUserId, String targetUserId) {
+        try {
+            log.info("Checking if userId={} is following userId={}", currentUserId, targetUserId);
+
+            // Handle edge cases
+            if (currentUserId == null || targetUserId == null) {
+                log.warn("Null userId provided: currentUserId={}, targetUserId={}", currentUserId, targetUserId);
+                return false;
+            }
+
+            if (currentUserId.equals(targetUserId)) {
+                log.info("User checking if they follow themselves, returning false");
+                return false;
+            }
+
+            // Check if there's an accepted follow relationship
+            // where currentUserId (followingId) is following targetUserId (followerId)
+            Optional<Follow> followOpt = followRepository.findFollowRelationship(currentUserId, targetUserId);
+
+            if (followOpt.isPresent()) {
+                Follow follow = followOpt.get();
+                boolean isFollowing = "accepted".equals(follow.getStatus());
+                log.info("Follow relationship found: status={}, isFollowing={}", follow.getStatus(), isFollowing);
+                return isFollowing;
+            }
+
+            log.info("No follow relationship found");
+            return false;
+        } catch (Exception e) {
+            log.error("Error checking if userId={} is following userId={}: {}", currentUserId, targetUserId, e.getMessage(), e);
+            return false;
+        }
+    }
+
     private void createStatsIfNotExists(String userId) {
         if (!userStatsRepository.findById(userId).isPresent()) {
             UserStats stats = UserStats.builder()

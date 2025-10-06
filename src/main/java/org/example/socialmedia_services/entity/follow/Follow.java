@@ -11,6 +11,14 @@ import java.time.LocalDateTime;
 @Table(name = "follows",
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"follower_id", "following_id"})
+        },
+        indexes = {
+                @Index(name = "idx_follower_id", columnList = "follower_id"),
+                @Index(name = "idx_following_id", columnList = "following_id"),
+                @Index(name = "idx_status", columnList = "status"),
+                @Index(name = "idx_follower_status", columnList = "follower_id, status"),
+                @Index(name = "idx_following_status", columnList = "following_id, status"),
+                @Index(name = "idx_follower_following", columnList = "follower_id, following_id")
         })
 @Data
 @Builder

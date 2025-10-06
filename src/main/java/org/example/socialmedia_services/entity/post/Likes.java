@@ -10,7 +10,13 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @Setter
-@Table(name = "post_likes")
+@Table(name = "post_likes",
+        indexes = {
+                @Index(name = "idx_like_post_id", columnList = "post_id"),
+                @Index(name = "idx_like_user_id", columnList = "user_id"),
+                @Index(name = "idx_like_post_user", columnList = "post_id, user_id"),
+                @Index(name = "idx_like_liked_at", columnList = "liked_at")
+        })
 public class Likes {
 
     @Id
