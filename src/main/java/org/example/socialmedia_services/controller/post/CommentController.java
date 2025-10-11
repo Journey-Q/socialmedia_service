@@ -48,7 +48,7 @@ public class CommentController {
                                             @PathVariable Long commentId,
                                             @Valid @RequestBody AddCommentRequest request) {
 
-        // Get current authenticated user
+        // Get current authew3nticated user
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         Long userId = userPrincipal.getUser().getUserId();
