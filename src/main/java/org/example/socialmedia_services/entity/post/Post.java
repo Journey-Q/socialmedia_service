@@ -8,7 +8,14 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "posts")
+@Table(name = "posts",
+        indexes = {
+                @Index(name = "idx_created_by_id", columnList = "created_by_id"),
+                @Index(name = "idx_created_at", columnList = "created_at"),
+                @Index(name = "idx_created_by_created_at", columnList = "created_by_id, created_at"),
+                @Index(name = "idx_likes_count", columnList = "likes_count"),
+                @Index(name = "idx_comments_count", columnList = "comments_count")
+        })
 @Getter @Setter
 public class Post {
 

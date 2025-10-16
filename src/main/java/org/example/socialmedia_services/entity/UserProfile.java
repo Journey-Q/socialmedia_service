@@ -10,7 +10,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "user_profiles")
+@Table(name = "user_profiles",
+        indexes = {
+                @Index(name = "idx_user_id", columnList = "user_id"),
+                @Index(name = "idx_display_name", columnList = "display_name"),
+                @Index(name = "idx_is_active", columnList = "is_active"),
+                @Index(name = "idx_active_display_name", columnList = "is_active, display_name")
+        })
 @Data
 @Builder
 @NoArgsConstructor

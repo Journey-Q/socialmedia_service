@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "user_stats")
+@Table(name = "user_stats",
+        indexes = {
+                @Index(name = "idx_stats_user_id", columnList = "user_id"),
+                @Index(name = "idx_stats_followers_count", columnList = "followers_count"),
+                @Index(name = "idx_stats_following_count", columnList = "following_count"),
+                @Index(name = "idx_stats_posts_count", columnList = "posts_count")
+        })
 @Data
 @Builder
 @NoArgsConstructor

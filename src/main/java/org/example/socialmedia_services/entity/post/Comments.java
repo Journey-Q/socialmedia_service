@@ -10,7 +10,13 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @Setter
-@Table(name = "post_comments")
+@Table(name = "post_comments",
+        indexes = {
+                @Index(name = "idx_comment_post_id", columnList = "post_id"),
+                @Index(name = "idx_comment_user_id", columnList = "user_id"),
+                @Index(name = "idx_comment_parent_id", columnList = "parent_id"),
+                @Index(name = "idx_comment_post_created", columnList = "post_id, commented_at")
+        })
 public class Comments {
 
     @Id

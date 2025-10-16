@@ -3,6 +3,7 @@ package org.example.socialmedia_services.controller.follow;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.socialmedia_services.dto.follow.*;
+import org.example.socialmedia_services.entity.UserPrincipal;
 import org.example.socialmedia_services.entity.follow.Follow;
 import org.example.socialmedia_services.services.follow.FollowService;
 import org.springframework.http.ResponseEntity;
@@ -130,13 +131,25 @@ public class FollowController {
         return ResponseEntity.ok(responseData);
     }
 
+    @GetMapping("/is_following/{userId}")
+    public ResponseEntity<?> isFollowing(@PathVariable String userId) {
+        String currentUserId = getCurrentUserId();
+
+        boolean isFollowing = followService.isFollowing(currentUserId, userId);
+
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("success", true);
+        responseData.put("isFollowing", isFollowing);
+
+        return ResponseEntity.ok(responseData);
+    }
+
     private String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof org.example.socialmedia_services.entity.UserPrincipal) {
-            org.example.socialmedia_services.entity.UserPrincipal userPrincipal =
-                    (org.example.socialmedia_services.entity.UserPrincipal) authentication.getPrincipal();
-            return userPrincipal.getUserId().toString();
-        }
-        throw new RuntimeException("User not authenticated");
+
+        // Get UserDetails from principal
+        UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
+        String userId = String.valueOf(userDetails.getUserId());
+        return userId;
     }
 }

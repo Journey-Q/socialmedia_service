@@ -10,6 +10,7 @@ import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.follow.FollowRepository;
 import org.example.socialmedia_services.repository.UserProfileRepository;
 import org.example.socialmedia_services.repository.follow.UserStatsRepository;
+import org.example.socialmedia_services.services.kafka.KafkaProducerService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,7 @@ public class FollowService {
     private final FollowRepository followRepository;
     private final UserProfileRepository userProfileRepository;
     private final UserStatsRepository userStatsRepository;
+    private final KafkaProducerService kafkaProducerService;
 
     @Transactional
     public Follow createFollow(String followingId, String followerId) {
@@ -59,6 +61,9 @@ public class FollowService {
 
         createStatsIfNotExists(followingId);
         createStatsIfNotExists(followerId);
+
+        // Send Kafka event for follow request
+        sendFollowEventToKafka(savedFollow.getId(), followingId, followerId);
 
         log.info("Follow request created: id={}, status=pending", savedFollow.getId());
         return savedFollow;
@@ -277,6 +282,40 @@ public class FollowService {
                 .build();
     }
 
+    public boolean isFollowing(String currentUserId, String targetUserId) {
+        try {
+            log.info("Checking if userId={} is following userId={}", currentUserId, targetUserId);
+
+            // Handle edge cases
+            if (currentUserId == null || targetUserId == null) {
+                log.warn("Null userId provided: currentUserId={}, targetUserId={}", currentUserId, targetUserId);
+                return false;
+            }
+
+            if (currentUserId.equals(targetUserId)) {
+                log.info("User checking if they follow themselves, returning false");
+                return false;
+            }
+
+            // Check if there's an accepted follow relationship
+            // where currentUserId (followingId) is following targetUserId (followerId)
+            Optional<Follow> followOpt = followRepository.findFollowRelationship(currentUserId, targetUserId);
+
+            if (followOpt.isPresent()) {
+                Follow follow = followOpt.get();
+                boolean isFollowing = "accepted".equals(follow.getStatus());
+                log.info("Follow relationship found: status={}, isFollowing={}", follow.getStatus(), isFollowing);
+                return isFollowing;
+            }
+
+            log.info("No follow relationship found");
+            return false;
+        } catch (Exception e) {
+            log.error("Error checking if userId={} is following userId={}: {}", currentUserId, targetUserId, e.getMessage(), e);
+            return false;
+        }
+    }
+
     private void createStatsIfNotExists(String userId) {
         if (!userStatsRepository.findById(userId).isPresent()) {
             UserStats stats = UserStats.builder()
@@ -287,6 +326,29 @@ public class FollowService {
                     .build();
             userStatsRepository.save(stats);
             log.info("Created stats for userId={}", userId);
+        }
+    }
+
+    private void sendFollowEventToKafka(Long followId, String senderId, String receiverId) {
+        try {
+            // Get sender's profile
+            Optional<UserProfile> senderProfileOpt = userProfileRepository.findActiveByUserId(senderId);
+            if (senderProfileOpt.isEmpty()) {
+                return; // Skip sending event if sender profile not found
+            }
+            UserProfile senderProfile = senderProfileOpt.get();
+
+            // Send Kafka event
+            kafkaProducerService.sendFollowEvent(
+                    followId,
+                    senderId,
+                    receiverId,
+                    senderProfile.getDisplayName(),
+                    senderProfile.getProfileImageUrl()
+            );
+        } catch (Exception e) {
+            // Log but don't fail the follow operation if Kafka event fails
+            // The exception is already logged in KafkaProducerService
         }
     }
 }

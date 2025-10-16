@@ -12,7 +12,11 @@ import java.util.Map;
 @Entity
 @Getter
 @Setter
-@Table(name = "post_content")
+@Table(name = "post_content",
+        indexes = {
+                @Index(name = "idx_post_content_id", columnList = "post_id"),
+                @Index(name = "idx_journey_title", columnList = "journey_title")
+        })
 public class PostContent {
 
     @Id

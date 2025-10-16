@@ -44,6 +44,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // Optimized method to fetch all posts with content (for feed)
     @Query("SELECT DISTINCT p FROM Post p " +
             "LEFT JOIN FETCH p.postContent pc " +
+            "LEFT JOIN FETCH pc.placeWiseContentList " +
             "ORDER BY p.createdAt DESC")
     List<Post> findAllPostsWithContent();
 
