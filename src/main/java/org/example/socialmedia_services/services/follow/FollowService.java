@@ -63,7 +63,7 @@ public class FollowService {
         createStatsIfNotExists(followerId);
 
         // Send Kafka event for follow request
-        sendFollowEventToKafka(followingId, followerId);
+        sendFollowEventToKafka(savedFollow.getId(), followingId, followerId);
 
         log.info("Follow request created: id={}, status=pending", savedFollow.getId());
         return savedFollow;
@@ -329,7 +329,7 @@ public class FollowService {
         }
     }
 
-    private void sendFollowEventToKafka(String senderId, String receiverId) {
+    private void sendFollowEventToKafka(Long followId, String senderId, String receiverId) {
         try {
             // Get sender's profile
             Optional<UserProfile> senderProfileOpt = userProfileRepository.findActiveByUserId(senderId);
@@ -340,6 +340,7 @@ public class FollowService {
 
             // Send Kafka event
             kafkaProducerService.sendFollowEvent(
+                    followId,
                     senderId,
                     receiverId,
                     senderProfile.getDisplayName(),

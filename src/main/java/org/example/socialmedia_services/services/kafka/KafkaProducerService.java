@@ -62,10 +62,11 @@ public class KafkaProducerService {
         }
     }
 
-    public void sendFollowEvent(String senderId, String receiverId, String senderName,
+    public void sendFollowEvent(Long followId, String senderId, String receiverId, String senderName,
                                 String senderProfileUrl) {
         try {
             Map<String, String> eventData = new HashMap<>();
+            eventData.put("followId", String.valueOf(followId));
             eventData.put("senderId", senderId);
             eventData.put("receiverId", receiverId);
             eventData.put("senderName", senderName);
@@ -73,7 +74,7 @@ public class KafkaProducerService {
 
             String message = objectMapper.writeValueAsString(eventData);
             kafkaTemplate.send("follow-events", message);
-            log.info("Follow event sent: senderId={}, receiverId={}", senderId, receiverId);
+            log.info("Follow event sent: followId={}, senderId={}, receiverId={}", followId, senderId, receiverId);
         } catch (Exception e) {
             log.error("Failed to send follow event: {}", e.getMessage(), e);
         }
