@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,37 +21,31 @@ public interface UserStatsRepository extends JpaRepository<UserStats, String> {
 
     // Increment followers count
     @Modifying
-    @Transactional
     @Query("UPDATE UserStats us SET us.followersCount = us.followersCount + 1 WHERE us.userId = :userId")
     int incrementFollowers(@Param("userId") String userId);
 
     // Decrement followers count
     @Modifying
-    @Transactional
     @Query("UPDATE UserStats us SET us.followersCount = CASE WHEN us.followersCount > 0 THEN us.followersCount - 1 ELSE 0 END WHERE us.userId = :userId")
     int decrementFollowers(@Param("userId") String userId);
 
     // Increment following count
     @Modifying
-    @Transactional
     @Query("UPDATE UserStats us SET us.followingCount = us.followingCount + 1 WHERE us.userId = :userId")
     int incrementFollowing(@Param("userId") String userId);
 
     // Decrement following count
     @Modifying
-    @Transactional
     @Query("UPDATE UserStats us SET us.followingCount = CASE WHEN us.followingCount > 0 THEN us.followingCount - 1 ELSE 0 END WHERE us.userId = :userId")
     int decrementFollowing(@Param("userId") String userId);
 
     // Increment posts count
     @Modifying
-    @Transactional
     @Query("UPDATE UserStats us SET us.postsCount = us.postsCount + 1 WHERE us.userId = :userId")
     int incrementPosts(@Param("userId") String userId);
 
     // Decrement posts count
     @Modifying
-    @Transactional
     @Query("UPDATE UserStats us SET us.postsCount = CASE WHEN us.postsCount > 0 THEN us.postsCount - 1 ELSE 0 END WHERE us.userId = :userId")
     int decrementPosts(@Param("userId") String userId);
 

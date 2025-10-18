@@ -90,6 +90,10 @@ public class FollowService {
             throw new BadRequestException("Follow request is not pending");
         }
 
+        // Ensure stats exist for both users before updating
+        createStatsIfNotExists(currentUserId);
+        createStatsIfNotExists(follow.getFollowingId());
+
         // Update status to accepted
         follow.setStatus("accepted");
         followRepository.save(follow);
@@ -97,8 +101,17 @@ public class FollowService {
         // Update stats:
         // currentUserId (follower) gains a follower
         // followingId gains someone they're following
-        userStatsRepository.incrementFollowers(currentUserId);
-        userStatsRepository.incrementFollowing(follow.getFollowingId());
+        int followersUpdated = userStatsRepository.incrementFollowers(currentUserId);
+        if (followersUpdated == 0) {
+            log.error("Failed to increment followers count for userId={}", currentUserId);
+            throw new BadRequestException("Failed to update follower count");
+        }
+
+        int followingUpdated = userStatsRepository.incrementFollowing(follow.getFollowingId());
+        if (followingUpdated == 0) {
+            log.error("Failed to increment following count for userId={}", follow.getFollowingId());
+            throw new BadRequestException("Failed to update following count");
+        }
 
         log.info("Follow request accepted: followId={}, followingId={} now follows followerId={}",
                 followId, follow.getFollowingId(), currentUserId);
@@ -149,10 +162,19 @@ public class FollowService {
             throw new BadRequestException("Follow relationship is not active");
         }
 
+        // Delete the follow relationship first
         followRepository.delete(follow);
 
-        userStatsRepository.decrementFollowers(followerId);
-        userStatsRepository.decrementFollowing(followingId);
+        // Update stats - decrement counts
+        int followersUpdated = userStatsRepository.decrementFollowers(followerId);
+        if (followersUpdated == 0) {
+            log.warn("Failed to decrement followers count for userId={} - stats may not exist", followerId);
+        }
+
+        int followingUpdated = userStatsRepository.decrementFollowing(followingId);
+        if (followingUpdated == 0) {
+            log.warn("Failed to decrement following count for userId={} - stats may not exist", followingId);
+        }
 
         log.info("Unfollowed successfully: followingId={} unfollowed followerId={}", followingId, followerId);
         return true;
@@ -312,6 +334,40 @@ public class FollowService {
             return false;
         } catch (Exception e) {
             log.error("Error checking if userId={} is following userId={}: {}", currentUserId, targetUserId, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    public boolean isPending(String currentUserId, String targetUserId) {
+        try {
+            log.info("Checking if there's a pending follow request from userId={} to userId={}", currentUserId, targetUserId);
+
+            // Handle edge cases
+            if (currentUserId == null || targetUserId == null) {
+                log.warn("Null userId provided: currentUserId={}, targetUserId={}", currentUserId, targetUserId);
+                return false;
+            }
+
+            if (currentUserId.equals(targetUserId)) {
+                log.info("User checking pending status with themselves, returning false");
+                return false;
+            }
+
+            // Check if there's a pending follow relationship
+            // where currentUserId (followingId) sent a request to targetUserId (followerId)
+            Optional<Follow> followOpt = followRepository.findFollowRelationship(currentUserId, targetUserId);
+
+            if (followOpt.isPresent()) {
+                Follow follow = followOpt.get();
+                boolean isPending = "pending".equals(follow.getStatus());
+                log.info("Follow relationship found: status={}, isPending={}", follow.getStatus(), isPending);
+                return isPending;
+            }
+
+            log.info("No follow relationship found");
+            return false;
+        } catch (Exception e) {
+            log.error("Error checking if there's a pending request from userId={} to userId={}: {}", currentUserId, targetUserId, e.getMessage(), e);
             return false;
         }
     }
