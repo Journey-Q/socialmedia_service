@@ -71,6 +71,7 @@ public class TripJoinRequestService {
                     .tripId(trip.getTripId())
                     .senderId(senderId)
                     .receiverId(receiverId)
+                    .groupId(request.getGroupId())
                     .requestStatus("PENDING")
                     .isActive(true)
                     .build();
