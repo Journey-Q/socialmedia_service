@@ -144,6 +144,36 @@ public class FollowController {
         return ResponseEntity.ok(responseData);
     }
 
+    @GetMapping("/followers/{userId}")
+    public ResponseEntity<?> getFollowersByUserId(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        FollowersListResponse followers = followService.getFollowersWithProfiles(userId, page, size);
+
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("success", true);
+        responseData.put("data", followers);
+
+        return ResponseEntity.ok(responseData);
+    }
+
+    @GetMapping("/following/{userId}")
+    public ResponseEntity<?> getFollowingByUserId(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        FollowingListResponse following = followService.getFollowingWithProfiles(userId, page, size);
+
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("success", true);
+        responseData.put("data", following);
+
+        return ResponseEntity.ok(responseData);
+    }
+
     private String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
