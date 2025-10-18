@@ -144,6 +144,19 @@ public class FollowController {
         return ResponseEntity.ok(responseData);
     }
 
+    @GetMapping("/is_pending/{userId}")
+    public ResponseEntity<?> isPending(@PathVariable String userId) {
+        String currentUserId = getCurrentUserId();
+
+        boolean isPending = followService.isPending(currentUserId, userId);
+
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("success", true);
+        responseData.put("isPending", isPending);
+
+        return ResponseEntity.ok(responseData);
+    }
+
     @GetMapping("/followers/{userId}")
     public ResponseEntity<?> getFollowersByUserId(
             @PathVariable String userId,
