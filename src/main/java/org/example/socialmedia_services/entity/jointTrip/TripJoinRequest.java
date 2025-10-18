@@ -31,6 +31,9 @@ public class TripJoinRequest {
     @Column(name = "receiver_id", nullable = false)
     private Long receiverId; // User who received the trip request
 
+    @Column(name = "group_id")
+    private Long groupId; // Group ID associated with the trip
+
     @Column(name = "request_status", nullable = false, length = 20)
     @Builder.Default
     private String requestStatus = "PENDING"; // PENDING, ACCEPTED, REJECTED, CANCELLED
