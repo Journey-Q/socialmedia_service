@@ -22,4 +22,6 @@ public class SendTripRequestDto {
 
     @NotEmpty(message = "At least one receiver is required")
     private List<Long> receiverIds; // List of follower IDs to send request to
+
+
 }
