@@ -68,7 +68,6 @@ public class PostService {
             // Create post content with the saved post's ID
             PostContent postContent = new PostContent();
             postContent.setPostId(savedPost.getPostId()); // Set the post_id directly
-            postContent.setPost(savedPost); // Set the post reference for proper mapping
             postContent.setJourneyTitle(request.getJourneyTitle());
             postContent.setNumberOfDays(request.getNumberOfDays());
             postContent.setPlacesVisited(request.getPlacesVisited());
@@ -105,8 +104,7 @@ public class PostService {
                 }
             }
 
-            // Update the post reference (bidirectional relationship)
-            savedPost.setPostContent(savedPostContent);
+            // Note: We don't set postContent on savedPost anymore since it's not a JPA relationship
 
             // Create and return response
             GetPostResponse response = new GetPostResponse();
@@ -154,18 +152,28 @@ public class PostService {
                 throw new BadRequestException("You are not authorized to delete this post");
             }
 
-            // Delete all related data first to avoid foreign key constraint violations
+            // Delete all related data in the correct order to avoid foreign key constraint violations
+
             // 1. Delete all likes for this post
             likeRepository.deleteByPostId(postId);
 
             // 2. Delete all comments for this post
             commentRepository.deleteByPostId(postId);
 
-            // 3. Decrement user's post count
-            userStatsRepo.decrementPosts(String.valueOf(userId));
+            // 3. Delete all place wise content for this post
+            placeWiseContentRepository.deleteByPostId(postId);
 
-            // 4. Delete the post - cascade will handle PostContent and PlaceWiseContent
+            // 4. Delete post content (must be deleted before post due to foreign key)
+            PostContent postContent = postContentRepository.findById(postId).orElse(null);
+            if (postContent != null) {
+                postContentRepository.delete(postContent);
+            }
+
+            // 5. Delete the post itself
             postRepository.delete(post);
+
+            // 6. Decrement user's post count
+            userStatsRepo.decrementPosts(String.valueOf(userId));
 
             return true;
 
@@ -180,18 +188,20 @@ public class PostService {
     @Transactional(readOnly = true)
     public GetPostResponse getPostById(Long postId) {
         try {
-            // Fetch post with all content in optimized queries
+            // Fetch post
             Optional<Post> postOptional = postRepository.findByIdWithAllContent(postId);
             if (postOptional.isEmpty()) {
                 throw new BadRequestException("Post not found");
             }
 
             Post post = postOptional.get();
-            PostContent postContent = post.getPostContent();
 
-            if (postContent == null) {
+            // Manually fetch PostContent
+            Optional<PostContent> postContentOptional = postContentRepository.findById(postId);
+            if (postContentOptional.isEmpty()) {
                 throw new BadRequestException("Post content not found");
             }
+            PostContent postContent = postContentOptional.get();
 
             // Find the user who created the post
             Optional<User> userOptional = userRepository.findById(post.getCreatedById());
@@ -249,13 +259,14 @@ public class PostService {
             }
             User user = userOptional.get();
 
-            // Fetch posts by user with all content
+            // Fetch posts by user
             List<Post> posts = postRepository.findByUserIdWithAllContent(userId);
 
             // Convert to simplified response DTOs
             List<GetPostUserResponse> responses = new ArrayList<>();
             for (Post post : posts) {
-                PostContent postContent = post.getPostContent();
+                // Manually fetch PostContent for each post
+                PostContent postContent = postContentRepository.findById(post.getPostId()).orElse(null);
 
                 // Create simplified response
                 GetPostUserResponse response = new GetPostUserResponse();
@@ -295,7 +306,7 @@ public class PostService {
     @Transactional(readOnly = true)
     public List<GetPostResponse> getAllPosts() {
         try {
-            // Fetch all posts with content
+            // Fetch all posts
             List<Post> posts = postRepository.findAllPostsWithContent();
 
             // Convert to response DTOs
@@ -308,7 +319,8 @@ public class PostService {
                 }
                 User user = userOptional.get();
 
-                PostContent postContent = post.getPostContent();
+                // Manually fetch PostContent for each post
+                PostContent postContent = postContentRepository.findById(post.getPostId()).orElse(null);
 
                 // Convert place wise content to DTOs
                 List<PlaceWiseContentDto> placeWiseContentDtos = new ArrayList<>();

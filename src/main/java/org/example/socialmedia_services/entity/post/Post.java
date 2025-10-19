@@ -37,9 +37,8 @@ public class Post {
     @Column(name = "comments_count")
     private Integer commentsCount = 0;
 
-    // PostContent is mapped by post_id (PostContent.post_id references Post.post_id)
-    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private PostContent postContent;
+    // Note: PostContent is NOT mapped here to avoid foreign key issues
+    // PostContent is fetched separately in the service layer using postContentRepository.findById(postId)
 
     // Default constructor
     public Post() {

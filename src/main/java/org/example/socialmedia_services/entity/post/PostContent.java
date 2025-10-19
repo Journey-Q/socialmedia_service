@@ -23,11 +23,6 @@ public class PostContent {
     @Column(name = "post_id")
     private Long postId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "post_id")
-    private Post post;
-
     @Column(name = "journey_title")
     private String journeyTitle;
 

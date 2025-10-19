@@ -13,6 +13,7 @@ import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.UserProfileRepository;
 import org.example.socialmedia_services.repository.follow.FollowRepository;
 import org.example.socialmedia_services.repository.post.LikeRepository;
+import org.example.socialmedia_services.repository.post.PostContentRepository;
 import org.example.socialmedia_services.repository.post.PostRepository;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 public class FeedService {
 
     private final PostRepository postRepository;
+    private final PostContentRepository postContentRepository;
     private final FollowRepository followRepository;
     private final UserProfileRepository userProfileRepository;
     private final LikeRepository likeRepository;
@@ -193,8 +195,8 @@ public class FeedService {
             builder.rankScore(rankScore);
         }
 
-        // Add post content if available
-        PostContent postContent = post.getPostContent();
+        // Add post content if available - fetch manually
+        PostContent postContent = postContentRepository.findById(post.getPostId()).orElse(null);
         if (postContent != null) {
             builder.journeyTitle(postContent.getJourneyTitle())
                     .numberOfDays(postContent.getNumberOfDays())

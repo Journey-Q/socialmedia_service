@@ -7,6 +7,7 @@ import org.example.socialmedia_services.entity.post.PostContent;
 import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.UserProfileRepository;
 import org.example.socialmedia_services.repository.post.CommentRepository;
+import org.example.socialmedia_services.repository.post.PostContentRepository;
 import org.example.socialmedia_services.repository.post.PostRepository;
 import org.example.socialmedia_services.services.kafka.KafkaProducerService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,9 @@ public class CommentService {
 
     @Autowired
     private PostRepository postRepository;
+
+    @Autowired
+    private PostContentRepository postContentRepository;
 
     @Autowired
     private UserProfileRepository userProfileRepository;
@@ -278,7 +282,7 @@ public class CommentService {
         try {
             // Get post content for post name
             String postName = null;
-            PostContent postContent = post.getPostContent();
+            PostContent postContent = postContentRepository.findById(post.getPostId()).orElse(null);
             if (postContent != null && postContent.getJourneyTitle() != null) {
                 postName = postContent.getJourneyTitle();
             }
