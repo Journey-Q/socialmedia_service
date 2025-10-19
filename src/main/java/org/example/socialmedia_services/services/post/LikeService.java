@@ -65,7 +65,7 @@ public class LikeService {
                 postRepository.save(post);
 
                 // Decrement user's likes count in user_stats
-                userStatsRepository.decrementLikes(String.valueOf(userId));
+                decrementUserLikesCount(userId);
 
                 return false; // Unlike action
             } else {
@@ -78,7 +78,7 @@ public class LikeService {
                 postRepository.save(post);
 
                 // Increment user's likes count in user_stats
-                userStatsRepository.incrementLikes(String.valueOf(userId));
+                incrementUserLikesCount(userId);
 
                 // Send Kafka event for like (only when liking, not unliking)
                 sendLikeEventToKafka(userId, post);
