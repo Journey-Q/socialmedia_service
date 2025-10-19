@@ -49,6 +49,16 @@ public interface UserStatsRepository extends JpaRepository<UserStats, String> {
     @Query("UPDATE UserStats us SET us.postsCount = CASE WHEN us.postsCount > 0 THEN us.postsCount - 1 ELSE 0 END WHERE us.userId = :userId")
     int decrementPosts(@Param("userId") String userId);
 
+    // Increment likes count
+    @Modifying
+    @Query("UPDATE UserStats us SET us.likesCount = us.likesCount + 1 WHERE us.userId = :userId")
+    int incrementLikes(@Param("userId") String userId);
+
+    // Decrement likes count
+    @Modifying
+    @Query("UPDATE UserStats us SET us.likesCount = CASE WHEN us.likesCount > 0 THEN us.likesCount - 1 ELSE 0 END WHERE us.userId = :userId")
+    int decrementLikes(@Param("userId") String userId);
+
     // Get users with most followers
     @Query("SELECT us FROM UserStats us ORDER BY us.followersCount DESC")
     List<UserStats> findTopUsersByFollowers();
@@ -56,4 +66,8 @@ public interface UserStatsRepository extends JpaRepository<UserStats, String> {
     // Get users with most following
     @Query("SELECT us FROM UserStats us ORDER BY us.followingCount DESC")
     List<UserStats> findTopUsersByFollowing();
+
+    // Get users with most likes
+    @Query("SELECT us FROM UserStats us ORDER BY us.likesCount DESC")
+    List<UserStats> findTopUsersByLikes();
 }
