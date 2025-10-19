@@ -1,9 +1,12 @@
 package org.example.socialmedia_services.services.feed;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.socialmedia_services.entity.UserProfile;
 import org.example.socialmedia_services.entity.post.PlaceWiseContent;
 import org.example.socialmedia_services.entity.post.Post;
+import org.example.socialmedia_services.entity.post.PostContent;
+import org.example.socialmedia_services.repository.post.PostContentRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -13,8 +16,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class FeedRankingService {
+
+    private final PostContentRepository postContentRepository;
 
     // Ranking weights - tuned for optimal feed experience
     private static final double FOLLOWER_WEIGHT = 3.0;
@@ -107,8 +113,9 @@ public class FeedRankingService {
             return 0.0;
         }
 
-        if (post.getPostContent() == null ||
-            post.getPostContent().getPlaceWiseContentList() == null) {
+        // Fetch PostContent manually
+        PostContent postContent = postContentRepository.findById(post.getPostId()).orElse(null);
+        if (postContent == null || postContent.getPlaceWiseContentList() == null) {
             return 0.0;
         }
 
@@ -118,7 +125,7 @@ public class FeedRankingService {
                 .collect(Collectors.toSet());
 
         // Get all activities from post's place-wise content
-        Set<String> postActivities = post.getPostContent().getPlaceWiseContentList().stream()
+        Set<String> postActivities = postContent.getPlaceWiseContentList().stream()
                 .filter(pwc -> pwc.getActivities() != null)
                 .flatMap(pwc -> pwc.getActivities().stream())
                 .map(String::toLowerCase)
@@ -146,8 +153,9 @@ public class FeedRankingService {
             return 0.0;
         }
 
-        if (post.getPostContent() == null ||
-            post.getPostContent().getPlaceWiseContentList() == null) {
+        // Fetch PostContent manually
+        PostContent postContent = postContentRepository.findById(post.getPostId()).orElse(null);
+        if (postContent == null || postContent.getPlaceWiseContentList() == null) {
             return 0.0;
         }
 
@@ -157,7 +165,7 @@ public class FeedRankingService {
                 .collect(Collectors.toSet());
 
         // Get all moods from post's place-wise content
-        Set<String> postMoods = post.getPostContent().getPlaceWiseContentList().stream()
+        Set<String> postMoods = postContent.getPlaceWiseContentList().stream()
                 .map(PlaceWiseContent::getTripMood)
                 .filter(mood -> mood != null && !mood.isEmpty())
                 .map(String::toLowerCase)

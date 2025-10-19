@@ -25,33 +25,24 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT COUNT(p) FROM Post p WHERE p.createdById = :userId")
     Long countPostsByUserId(@Param("userId") Long userId);
 
-    // Optimized method to fetch post with all related data in a single query
-    @Query("SELECT DISTINCT p FROM Post p " +
-            "LEFT JOIN FETCH p.postContent pc " +
-            "LEFT JOIN FETCH pc.placeWiseContentList pwc " +
-            "WHERE p.postId = :postId " +
-            "ORDER BY pwc.sequenceOrder ASC")
+    // Find post by ID (simple query without joins)
+    // PostContent will be fetched separately in service layer
+    @Query("SELECT p FROM Post p WHERE p.postId = :postId")
     Optional<Post> findByIdWithAllContent(@Param("postId") Long postId);
 
-    // Optimized method to fetch posts by user with all related data
-    @Query("SELECT DISTINCT p FROM Post p " +
-            "LEFT JOIN FETCH p.postContent pc " +
-            "LEFT JOIN FETCH pc.placeWiseContentList pwc " +
-            "WHERE p.createdById = :userId " +
-            "ORDER BY p.createdAt DESC, pwc.sequenceOrder ASC")
+    // Find posts by user ID ordered by creation date
+    // PostContent will be fetched separately in service layer
+    @Query("SELECT p FROM Post p WHERE p.createdById = :userId ORDER BY p.createdAt DESC")
     List<Post> findByUserIdWithAllContent(@Param("userId") Long userId);
 
-    // Optimized method to fetch all posts with content (for feed)
-    @Query("SELECT DISTINCT p FROM Post p " +
-            "LEFT JOIN FETCH p.postContent pc " +
-            "LEFT JOIN FETCH pc.placeWiseContentList " +
-            "ORDER BY p.createdAt DESC")
+    // Find all posts ordered by creation date
+    // PostContent will be fetched separately in service layer
+    @Query("SELECT p FROM Post p ORDER BY p.createdAt DESC")
     List<Post> findAllPostsWithContent();
 
-    // Method to fetch posts with content and place data with pagination
-    @Query(value = "SELECT DISTINCT p FROM Post p " +
-            "LEFT JOIN FETCH p.postContent pc " +
-            "ORDER BY p.createdAt DESC",
+    // Find posts with pagination
+    // PostContent will be fetched separately in service layer
+    @Query(value = "SELECT p FROM Post p ORDER BY p.createdAt DESC",
             countQuery = "SELECT COUNT(p) FROM Post p")
     List<Post> findPostsWithContentPaginated(@Param("limit") int limit, @Param("offset") int offset);
 }
