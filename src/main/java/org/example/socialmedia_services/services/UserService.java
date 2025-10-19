@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.beans.Transient;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -132,5 +134,25 @@ public class UserService {
     public boolean setSetup(Long userid) {
        int issetup = repo.setIsSetup(userid);
        return true;
+    }
+
+    public List<UserResponseDTO> getAllUsers() {
+        List<User> users = repo.findAll();
+        return users.stream()
+                .map(this::convertToUserResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    private UserResponseDTO convertToUserResponseDTO(User user) {
+        UserResponseDTO dto = new UserResponseDTO();
+        dto.setUserId(user.getUserId());
+        dto.setUsername(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setProfileUrl(user.getProfileUrl());
+        dto.setCreatedAt(user.getCreatedAt());
+        dto.setRole(user.getRole());
+        dto.setIsActive(user.getIsActive());
+        dto.setIsSetup(user.getIsSetup());
+        return dto;
     }
 }
