@@ -11,6 +11,8 @@ import org.example.socialmedia_services.entity.post.PostContent;
 import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.UserRepo;
 import org.example.socialmedia_services.repository.follow.UserStatsRepository;
+import org.example.socialmedia_services.repository.post.CommentRepository;
+import org.example.socialmedia_services.repository.post.LikeRepository;
 import org.example.socialmedia_services.repository.post.PlaceWiseContentRepository;
 import org.example.socialmedia_services.repository.post.PostContentRepository;
 import org.example.socialmedia_services.repository.post.PostRepository;
@@ -40,6 +42,12 @@ public class PostService {
 
     @Autowired
     private UserRepo userRepository;
+
+    @Autowired
+    private LikeRepository likeRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
 
     @Transactional
     public GetPostResponse createPost(PostContentRequest request, Long userId) {
@@ -145,7 +153,25 @@ public class PostService {
                 throw new BadRequestException("You are not authorized to delete this post");
             }
 
-            // Delete the post - CASCADE will handle related data automatically
+            // Delete all related data first to avoid foreign key constraint violations
+            // 1. Delete all likes for this post
+            likeRepository.deleteByPostId(postId);
+
+            // 2. Delete all comments for this post
+            commentRepository.deleteByPostId(postId);
+
+            // 3. Delete all place wise content for this post
+            placeWiseContentRepository.deleteByPostId(postId);
+
+            // 4. Delete post content (if cascade doesn't handle it)
+            if (post.getPostContent() != null) {
+                postContentRepository.delete(post.getPostContent());
+            }
+
+            // 5. Decrement user's post count
+            userStatsRepo.decrementPosts(String.valueOf(userId));
+
+            // 6. Finally, delete the post itself
             postRepository.delete(post);
 
             return true;
