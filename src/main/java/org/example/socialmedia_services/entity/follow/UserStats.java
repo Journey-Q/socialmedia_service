@@ -9,7 +9,8 @@ import lombok.*;
                 @Index(name = "idx_stats_user_id", columnList = "user_id"),
                 @Index(name = "idx_stats_followers_count", columnList = "followers_count"),
                 @Index(name = "idx_stats_following_count", columnList = "following_count"),
-                @Index(name = "idx_stats_posts_count", columnList = "posts_count")
+                @Index(name = "idx_stats_posts_count", columnList = "posts_count"),
+                @Index(name = "idx_stats_likes_count", columnList = "likes_count")
         })
 @Data
 @Builder
@@ -34,10 +35,15 @@ public class UserStats {
     @Builder.Default
     private Integer followingCount = 0;
 
+    @Column(name = "likes_count", nullable = false)
+    @Builder.Default
+    private Integer likesCount = 0;
+
     public UserStats(String userId) {
         this.userId = userId;
         this.followersCount = 0;
         this.followingCount = 0;
+        this.likesCount = 0;
     }
 
     // Helper methods to increment/decrement counts
@@ -61,12 +67,24 @@ public class UserStats {
         }
     }
 
+    public void incrementLikes() {
+        this.likesCount++;
+    }
+
+    public void decrementLikes() {
+        if (this.likesCount > 0) {
+            this.likesCount--;
+        }
+    }
+
     @Override
     public String toString() {
         return "UserStats{" +
                 "userId='" + userId + '\'' +
                 ", followersCount=" + followersCount +
                 ", followingCount=" + followingCount +
+                ", postsCount=" + postsCount +
+                ", likesCount=" + likesCount +
                 '}';
     }
 }
