@@ -5,11 +5,14 @@ import org.example.socialmedia_services.dto.AuthResponse;
 import org.example.socialmedia_services.dto.GooglesigninRequest;
 import org.example.socialmedia_services.dto.LoginRequest;
 import org.example.socialmedia_services.dto.SignupRequest;
+import org.example.socialmedia_services.dto.UserResponseDTO;
 import org.example.socialmedia_services.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
@@ -37,6 +40,9 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-
-
+    @GetMapping("/all")
+    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
+        List<UserResponseDTO> users = userservice.getAllUsers();
+        return ResponseEntity.ok(users);
+    }
 }
