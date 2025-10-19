@@ -53,12 +53,9 @@ public class PostContent {
     @Column(name = "restaurant_recommendations", columnDefinition = "jsonb")
     private List<Map<String, Object>> restaurantRecommendations;
 
-    // One-to-Many relationship with PlaceWiseContent
-    // PlaceWiseContent.post_id references PostContent.post_id
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    @JoinColumn(name = "post_id") // Foreign key in place_wise_content table
-    @OrderBy("sequenceOrder ASC")
-    private List<PlaceWiseContent> placeWiseContentList;
+    // Note: PlaceWiseContent is NOT mapped here to avoid JPA cascade conflicts
+    // PlaceWiseContent is fetched and deleted separately in the service layer
+    // Use placeWiseContentRepository.findByPostId(postId) to fetch the list
 
     // Default constructor
     public PostContent() {}

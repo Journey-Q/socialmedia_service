@@ -4,7 +4,9 @@ package org.example.socialmedia_services.repository.post;
 
 import org.example.socialmedia_services.entity.post.Comments;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,5 +23,7 @@ public interface CommentRepository extends JpaRepository<Comments, Long> {
     Long countByParentId(Long parentId);
 
     // Delete all comments for a post
+    @Modifying
+    @Transactional
     void deleteByPostId(Long postId);
 }
