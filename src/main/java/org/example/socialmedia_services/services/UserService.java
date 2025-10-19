@@ -155,4 +155,44 @@ public class UserService {
         dto.setIsSetup(user.getIsSetup());
         return dto;
     }
+
+    @Transactional
+    public boolean changePassword(ChangePasswordRequest request) {
+        try {
+            // 1. Validate that new password and confirm password match
+            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+                throw new BadRequestException("New password and confirm password do not match");
+            }
+
+            // 2. Find the user by ID
+            User user = repo.findById(request.getUserId())
+                    .orElseThrow(() -> new BadRequestException("User not found"));
+
+            // 3. Check if user has a password (for Google OAuth users who might not have password)
+            if (user.getPassword() == null || user.getPassword().isEmpty()) {
+                throw new BadRequestException("Cannot change password. This account uses social login (Google)");
+            }
+
+            // 4. Verify the current password
+            if (!encoder.matches(request.getCurrentPassword(), user.getPassword())) {
+                throw new BadRequestException("Current password is incorrect");
+            }
+
+            // 5. Validate that new password is different from current password
+            if (encoder.matches(request.getNewPassword(), user.getPassword())) {
+                throw new BadRequestException("New password must be different from current password");
+            }
+
+            // 6. Encode and update the new password
+            user.setPassword(encoder.encode(request.getNewPassword()));
+            repo.save(user);
+
+            return true;
+
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to change password", e);
+        }
+    }
 }
