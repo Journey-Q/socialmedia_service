@@ -68,6 +68,7 @@ public class PostService {
             // Create post content with the saved post's ID
             PostContent postContent = new PostContent();
             postContent.setPostId(savedPost.getPostId()); // Set the post_id directly
+            postContent.setPost(savedPost); // Set the post reference for proper mapping
             postContent.setJourneyTitle(request.getJourneyTitle());
             postContent.setNumberOfDays(request.getNumberOfDays());
             postContent.setPlacesVisited(request.getPlacesVisited());
@@ -160,18 +161,10 @@ public class PostService {
             // 2. Delete all comments for this post
             commentRepository.deleteByPostId(postId);
 
-            // 3. Delete all place wise content for this post
-            placeWiseContentRepository.deleteByPostId(postId);
-
-            // 4. Delete post content (if cascade doesn't handle it)
-            if (post.getPostContent() != null) {
-                postContentRepository.delete(post.getPostContent());
-            }
-
-            // 5. Decrement user's post count
+            // 3. Decrement user's post count
             userStatsRepo.decrementPosts(String.valueOf(userId));
 
-            // 6. Finally, delete the post itself
+            // 4. Delete the post - cascade will handle PostContent and PlaceWiseContent
             postRepository.delete(post);
 
             return true;
