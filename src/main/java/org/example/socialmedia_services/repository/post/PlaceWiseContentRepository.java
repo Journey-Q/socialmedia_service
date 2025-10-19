@@ -2,7 +2,9 @@ package org.example.socialmedia_services.repository.post;
 
 import org.example.socialmedia_services.entity.post.PlaceWiseContent;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,6 +18,8 @@ public interface PlaceWiseContentRepository extends JpaRepository<PlaceWiseConte
     List<PlaceWiseContent> findByPostId(Long postId);
 
     // Delete all place wise content for a post
+    @Modifying
+    @Transactional
     void deleteByPostId(Long postId);
 
     // Count place wise content for a post

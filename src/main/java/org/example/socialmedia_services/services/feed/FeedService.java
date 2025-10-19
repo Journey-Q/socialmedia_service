@@ -13,6 +13,7 @@ import org.example.socialmedia_services.exception.BadRequestException;
 import org.example.socialmedia_services.repository.UserProfileRepository;
 import org.example.socialmedia_services.repository.follow.FollowRepository;
 import org.example.socialmedia_services.repository.post.LikeRepository;
+import org.example.socialmedia_services.repository.post.PlaceWiseContentRepository;
 import org.example.socialmedia_services.repository.post.PostContentRepository;
 import org.example.socialmedia_services.repository.post.PostRepository;
 import org.springframework.cache.annotation.Cacheable;
@@ -31,6 +32,7 @@ public class FeedService {
 
     private final PostRepository postRepository;
     private final PostContentRepository postContentRepository;
+    private final PlaceWiseContentRepository placeWiseContentRepository;
     private final FollowRepository followRepository;
     private final UserProfileRepository userProfileRepository;
     private final LikeRepository likeRepository;
@@ -207,10 +209,10 @@ public class FeedService {
                     .hotelRecommendations(postContent.getHotelRecommendations())
                     .restaurantRecommendations(postContent.getRestaurantRecommendations());
 
-            // Convert place-wise content
-            if (postContent.getPlaceWiseContentList() != null) {
-                List<FeedPostDTO.PlaceWiseContentDTO> placeWiseContentDTOs = postContent.getPlaceWiseContentList()
-                        .stream()
+            // Convert place-wise content - fetch separately
+            List<PlaceWiseContent> placeWiseContentList = placeWiseContentRepository.findByPostId(post.getPostId());
+            if (placeWiseContentList != null && !placeWiseContentList.isEmpty()) {
+                List<FeedPostDTO.PlaceWiseContentDTO> placeWiseContentDTOs = placeWiseContentList.stream()
                         .map(this::convertToPlaceWiseContentDTO)
                         .collect(Collectors.toList());
                 builder.placeWiseContent(placeWiseContentDTOs);

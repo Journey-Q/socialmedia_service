@@ -2,8 +2,10 @@ package org.example.socialmedia_services.services.search;
 
 import org.example.socialmedia_services.dto.search.SearchResponse;
 import org.example.socialmedia_services.entity.UserProfile;
+import org.example.socialmedia_services.entity.post.PlaceWiseContent;
 import org.example.socialmedia_services.entity.post.PostContent;
 import org.example.socialmedia_services.repository.UserProfileRepository;
+import org.example.socialmedia_services.repository.post.PlaceWiseContentRepository;
 import org.example.socialmedia_services.repository.post.PostContentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +23,9 @@ public class SearchService {
 
     @Autowired
     private PostContentRepository postContentRepository;
+
+    @Autowired
+    private PlaceWiseContentRepository placeWiseContentRepository;
 
     public List<SearchResponse> search(String query, int limit) {
         List<SearchResponse> results = new ArrayList<>();
@@ -111,10 +116,11 @@ public class SearchService {
     }
 
     private String getPostImageUrl(PostContent post) {
-        // Try to get image from place-wise content first
-        if (post.getPlaceWiseContentList() != null && !post.getPlaceWiseContentList().isEmpty()) {
+        // Try to get image from place-wise content first - fetch separately
+        List<PlaceWiseContent> placeWiseContentList = placeWiseContentRepository.findByPostIdOrderBySequenceOrderAsc(post.getPostId());
+        if (placeWiseContentList != null && !placeWiseContentList.isEmpty()) {
             // Get the first place (ordered by sequenceOrder ASC)
-            var firstPlace = post.getPlaceWiseContentList().get(0);
+            var firstPlace = placeWiseContentList.get(0);
 
             // Get the first image URL from the first place
             if (firstPlace.getImageUrls() != null && !firstPlace.getImageUrls().isEmpty()) {

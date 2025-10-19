@@ -210,10 +210,11 @@ public class PostService {
             }
             User user = userOptional.get();
 
-            // Convert place wise content to DTOs
+            // Convert place wise content to DTOs - fetch separately
             List<PlaceWiseContentDto> placeWiseContentDtos = new ArrayList<>();
-            if (postContent.getPlaceWiseContentList() != null) {
-                placeWiseContentDtos = postContent.getPlaceWiseContentList().stream()
+            List<PlaceWiseContent> placeWiseContentList = placeWiseContentRepository.findByPostIdOrderBySequenceOrderAsc(postId);
+            if (placeWiseContentList != null && !placeWiseContentList.isEmpty()) {
+                placeWiseContentDtos = placeWiseContentList.stream()
                         .map(this::convertToDto)
                         .collect(Collectors.toList());
             }
@@ -322,12 +323,15 @@ public class PostService {
                 // Manually fetch PostContent for each post
                 PostContent postContent = postContentRepository.findById(post.getPostId()).orElse(null);
 
-                // Convert place wise content to DTOs
+                // Convert place wise content to DTOs - fetch separately
                 List<PlaceWiseContentDto> placeWiseContentDtos = new ArrayList<>();
-                if (postContent != null && postContent.getPlaceWiseContentList() != null) {
-                    placeWiseContentDtos = postContent.getPlaceWiseContentList().stream()
-                            .map(this::convertToDto)
-                            .collect(Collectors.toList());
+                if (postContent != null) {
+                    List<PlaceWiseContent> placeWiseContentList = placeWiseContentRepository.findByPostIdOrderBySequenceOrderAsc(post.getPostId());
+                    if (placeWiseContentList != null && !placeWiseContentList.isEmpty()) {
+                        placeWiseContentDtos = placeWiseContentList.stream()
+                                .map(this::convertToDto)
+                                .collect(Collectors.toList());
+                    }
                 }
 
                 // Create response
@@ -365,9 +369,10 @@ public class PostService {
 
     // Helper method to get location string for simplified response
     private String getLocationString(PostContent postContent) {
-        // Try to get location from first place with address
-        if (postContent.getPlaceWiseContentList() != null && !postContent.getPlaceWiseContentList().isEmpty()) {
-            PlaceWiseContent firstPlace = postContent.getPlaceWiseContentList().get(0);
+        // Try to get location from first place with address - fetch separately
+        List<PlaceWiseContent> placeWiseContentList = placeWiseContentRepository.findByPostIdOrderBySequenceOrderAsc(postContent.getPostId());
+        if (placeWiseContentList != null && !placeWiseContentList.isEmpty()) {
+            PlaceWiseContent firstPlace = placeWiseContentList.get(0);
             if (firstPlace.getAddress() != null && !firstPlace.getAddress().trim().isEmpty()) {
                 return firstPlace.getAddress();
             }
@@ -388,9 +393,10 @@ public class PostService {
     private List<String> getFirstPlaceImages(PostContent postContent) {
         List<String> postImages = new ArrayList<>();
 
-        // Get images from first place
-        if (postContent.getPlaceWiseContentList() != null && !postContent.getPlaceWiseContentList().isEmpty()) {
-            PlaceWiseContent firstPlace = postContent.getPlaceWiseContentList().get(0);
+        // Get images from first place - fetch separately
+        List<PlaceWiseContent> placeWiseContentList = placeWiseContentRepository.findByPostIdOrderBySequenceOrderAsc(postContent.getPostId());
+        if (placeWiseContentList != null && !placeWiseContentList.isEmpty()) {
+            PlaceWiseContent firstPlace = placeWiseContentList.get(0);
             if (firstPlace.getImageUrls() != null && !firstPlace.getImageUrls().isEmpty()) {
                 // Add the first image as cover
                 postImages.add(firstPlace.getImageUrls().get(0));
