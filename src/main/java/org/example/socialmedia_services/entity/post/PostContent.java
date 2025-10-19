@@ -23,6 +23,11 @@ public class PostContent {
     @Column(name = "post_id")
     private Long postId;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "post_id")
+    private Post post;
+
     @Column(name = "journey_title")
     private String journeyTitle;
 
@@ -55,7 +60,7 @@ public class PostContent {
 
     // One-to-Many relationship with PlaceWiseContent
     // PlaceWiseContent.post_id references PostContent.post_id
-    @OneToMany(cascade = {CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @JoinColumn(name = "post_id") // Foreign key in place_wise_content table
     @OrderBy("sequenceOrder ASC")
     private List<PlaceWiseContent> placeWiseContentList;
