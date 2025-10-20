@@ -5,15 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserStatsResponse {
+public class AllUsersProfilesResponse {
 
-    private String userId;
-    private Integer followersCount;
-    private Integer followingCount;
-    private Integer postsCount;
-    private Integer likesCount;
+    private List<UserProfileWithStatsResponse> users;
+    private Long totalCount;
+    private Integer currentPage;
+    private Integer totalPages;
 }

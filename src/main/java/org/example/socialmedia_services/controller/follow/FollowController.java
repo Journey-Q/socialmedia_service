@@ -187,6 +187,20 @@ public class FollowController {
         return ResponseEntity.ok(responseData);
     }
 
+    @GetMapping("/users-profiles")
+    public ResponseEntity<?> getAllUsersWithStats(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        AllUsersProfilesResponse allUsers = followService.getAllUsersWithStats(page, size);
+
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("success", true);
+        responseData.put("data", allUsers);
+
+        return ResponseEntity.ok(responseData);
+    }
+
     private String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
