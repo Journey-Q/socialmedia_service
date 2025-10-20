@@ -48,6 +48,9 @@ public class User {
     @Column(name = "is_trip_influencer")
     private Boolean isTripInfluencer = false;
 
+    @Column(name = "is_premium")
+    private Boolean isPremium = false;
+
     private Boolean isSetup = false;
 
 
