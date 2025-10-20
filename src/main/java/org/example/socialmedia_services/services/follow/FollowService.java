@@ -273,6 +273,7 @@ public class FollowService {
                     .followersCount(stats.getFollowersCount())
                     .followingCount(stats.getFollowingCount())
                     .postsCount(stats.getPostsCount())
+                    .likesCount(stats.getLikesCount())
                     .build();
         }
 
@@ -281,6 +282,7 @@ public class FollowService {
                 .followersCount(0)
                 .followingCount(0)
                 .postsCount(0)
+                .likesCount(0)
                 .build();
     }
 
@@ -446,6 +448,45 @@ public class FollowService {
             log.error("Failed to decrement following count for userId: {}", userId, e);
             // Don't throw - we don't want to fail the unfollow action if stats update fails
         }
+    }
+
+    public AllUsersProfilesResponse getAllUsersWithStats(int page, int size) {
+        log.info("Getting all users with profiles and stats");
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<UserProfile> profilesPage = userProfileRepository.findAllByIsActive(true, pageable);
+
+        List<UserProfileWithStatsResponse> users = profilesPage.getContent().stream()
+                .map(profile -> {
+                    // Get stats for this user
+                    UserStatsResponse stats = getStats(profile.getUserId());
+
+                    return UserProfileWithStatsResponse.builder()
+                            .userId(profile.getUserId())
+                            .displayName(profile.getDisplayName())
+                            .bio(profile.getBio())
+                            .profileImageUrl(profile.getProfileImageUrl())
+                            .setupCompleted(profile.getSetupCompleted())
+                            .favouriteActivities(profile.getFavouriteActivities())
+                            .preferredTripMoods(profile.getPreferredTripMoods())
+                            .createdAt(profile.getCreatedAt())
+                            .isPremium(profile.getIsPremium())
+                            .isTripFluence(profile.getIsTripFluence())
+                            .followersCount(stats.getFollowersCount())
+                            .followingCount(stats.getFollowingCount())
+                            .postsCount(stats.getPostsCount())
+                            .likesCount(stats.getLikesCount())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return AllUsersProfilesResponse.builder()
+                .users(users)
+                .totalCount(profilesPage.getTotalElements())
+                .currentPage(page)
+                .totalPages(profilesPage.getTotalPages())
+                .build();
     }
 
     private void sendFollowEventToKafka(Long followId, String senderId, String receiverId) {

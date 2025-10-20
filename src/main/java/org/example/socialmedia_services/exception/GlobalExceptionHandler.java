@@ -1,5 +1,6 @@
 package org.example.socialmedia_services.exception;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.example.socialmedia_services.dto.ApiError;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import jakarta.persistence.EntityNotFoundException;
 
 
 @ControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
   @ExceptionHandler(BadRequestException.class)
@@ -94,10 +96,11 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiError> handleGlobalException(Exception ex, HttpServletRequest request) {
+    log.error("Unhandled exception occurred", ex);
     ApiError apiError = new ApiError(
             HttpStatus.INTERNAL_SERVER_ERROR.value(),
             "Internal Server Error",
-            "An unexpected error occurred",
+            ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred",
             request.getRequestURI()
     );
     return new ResponseEntity<>(apiError, HttpStatus.INTERNAL_SERVER_ERROR);

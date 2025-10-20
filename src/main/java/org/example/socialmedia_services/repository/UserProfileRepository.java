@@ -1,6 +1,7 @@
 package org.example.socialmedia_services.repository;
 
 import org.example.socialmedia_services.entity.UserProfile;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -18,6 +19,9 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, String
     // Basic profile queries
     @Query("SELECT up FROM UserProfile up WHERE up.userId = :userId AND up.isActive = true")
     Optional<UserProfile> findActiveByUserId(@Param("userId") String userId);
+
+    @Query("SELECT up FROM UserProfile up WHERE up.isActive = :isActive")
+    Page<UserProfile> findAllByIsActive(@Param("isActive") Boolean isActive, Pageable pageable);
 
     @Query("SELECT up FROM UserProfile up WHERE up.displayName = :displayName AND up.isActive = true")
     Optional<UserProfile> findByDisplayName(@Param("displayName") String displayName);
