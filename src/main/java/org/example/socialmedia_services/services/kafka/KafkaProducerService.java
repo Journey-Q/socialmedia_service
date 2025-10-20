@@ -65,8 +65,8 @@ public class KafkaProducerService {
     public void sendFollowEvent(Long followId, String senderId, String receiverId, String senderName,
                                 String senderProfileUrl) {
         try {
-            Map<String, String> eventData = new HashMap<>();
-            eventData.put("followId", String.valueOf(followId));
+            Map<String, Object> eventData = new HashMap<>();
+            eventData.put("followId", followId);  // Send as Long, not String
             eventData.put("senderId", senderId);
             eventData.put("receiverId", receiverId);
             eventData.put("senderName", senderName);
