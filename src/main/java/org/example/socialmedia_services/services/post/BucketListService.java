@@ -28,7 +28,7 @@ public class BucketListService {
     /**
      * Get bucket list for a user
      */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.SUPPORTS)
     public GetBucketListResponse getBucketList(Long userId) {
         try {
             Optional<BucketList> bucketListOptional = bucketListRepository.findByUserId(userId);
@@ -127,10 +127,16 @@ public class BucketListService {
             bucketList.getBucketListItems().add(newItem);
 
             // Save bucket list
-            BucketList savedBucketList = bucketListRepository.save(bucketList);
+            bucketListRepository.save(bucketList);
 
-            // Return updated bucket list
-            return getBucketList(userId);
+            // Return simple response without fetching full details
+            return new GetBucketListResponse(
+                    bucketList.getBucketListId(),
+                    bucketList.getUserId(),
+                    new ArrayList<>(),
+                    bucketList.getCreatedAt(),
+                    bucketList.getUpdatedAt()
+            );
 
         } catch (BadRequestException e) {
             throw e;
@@ -167,8 +173,14 @@ public class BucketListService {
             // Save updated bucket list
             bucketListRepository.save(bucketList);
 
-            // Return updated bucket list
-            return getBucketList(userId);
+            // Return simple response without fetching full details
+            return new GetBucketListResponse(
+                    bucketList.getBucketListId(),
+                    bucketList.getUserId(),
+                    new ArrayList<>(),
+                    bucketList.getCreatedAt(),
+                    bucketList.getUpdatedAt()
+            );
 
         } catch (BadRequestException e) {
             throw e;
@@ -211,13 +223,46 @@ public class BucketListService {
             // Save updated bucket list
             bucketListRepository.save(bucketList);
 
-            // Return updated bucket list
-            return getBucketList(userId);
+            // Return simple response without fetching full details
+            return new GetBucketListResponse(
+                    bucketList.getBucketListId(),
+                    bucketList.getUserId(),
+                    new ArrayList<>(),
+                    bucketList.getCreatedAt(),
+                    bucketList.getUpdatedAt()
+            );
 
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Error updating visited status: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Check if a post is saved in user's bucket list
+     */
+    @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.SUPPORTS)
+    public boolean isSaved(Long userId, String postId) {
+        try {
+            Optional<BucketList> bucketListOptional = bucketListRepository.findByUserId(userId);
+
+            if (bucketListOptional.isEmpty()) {
+                return false;
+            }
+
+            BucketList bucketList = bucketListOptional.get();
+
+            if (bucketList.getBucketListItems() == null || bucketList.getBucketListItems().isEmpty()) {
+                return false;
+            }
+
+            // Check if post exists in bucket list
+            return bucketList.getBucketListItems().stream()
+                    .anyMatch(item -> item.getPostId().equals(postId));
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error checking if post is saved: " + e.getMessage(), e);
         }
     }
 
