@@ -90,10 +90,6 @@ public class FollowService {
             throw new BadRequestException("Follow request is not pending");
         }
 
-        // Ensure stats exist for both users before updating
-        createStatsIfNotExists(currentUserId);
-        createStatsIfNotExists(follow.getFollowingId());
-
         // Update status to accepted
         follow.setStatus("accepted");
         followRepository.save(follow);
@@ -101,17 +97,8 @@ public class FollowService {
         // Update stats:
         // currentUserId (follower) gains a follower
         // followingId gains someone they're following
-        int followersUpdated = userStatsRepository.incrementFollowers(currentUserId);
-        if (followersUpdated == 0) {
-            log.error("Failed to increment followers count for userId={}", currentUserId);
-            throw new BadRequestException("Failed to update follower count");
-        }
-
-        int followingUpdated = userStatsRepository.incrementFollowing(follow.getFollowingId());
-        if (followingUpdated == 0) {
-            log.error("Failed to increment following count for userId={}", follow.getFollowingId());
-            throw new BadRequestException("Failed to update following count");
-        }
+        incrementUserFollowersCount(currentUserId);
+        incrementUserFollowingCount(follow.getFollowingId());
 
         log.info("Follow request accepted: followId={}, followingId={} now follows followerId={}",
                 followId, follow.getFollowingId(), currentUserId);
@@ -166,15 +153,8 @@ public class FollowService {
         followRepository.delete(follow);
 
         // Update stats - decrement counts
-        int followersUpdated = userStatsRepository.decrementFollowers(followerId);
-        if (followersUpdated == 0) {
-            log.warn("Failed to decrement followers count for userId={} - stats may not exist", followerId);
-        }
-
-        int followingUpdated = userStatsRepository.decrementFollowing(followingId);
-        if (followingUpdated == 0) {
-            log.warn("Failed to decrement following count for userId={} - stats may not exist", followingId);
-        }
+        decrementUserFollowersCount(followerId);
+        decrementUserFollowingCount(followingId);
 
         log.info("Unfollowed successfully: followingId={} unfollowed followerId={}", followingId, followerId);
         return true;
@@ -374,14 +354,97 @@ public class FollowService {
 
     private void createStatsIfNotExists(String userId) {
         if (!userStatsRepository.findById(userId).isPresent()) {
-            UserStats stats = UserStats.builder()
-                    .userId(userId)
-                    .followersCount(0)
-                    .followingCount(0)
-                    .postsCount(0)
-                    .build();
+            UserStats stats = new UserStats(userId);
             userStatsRepository.save(stats);
             log.info("Created stats for userId={}", userId);
+        }
+    }
+
+    /**
+     * Increment followers count for a user with proper error handling
+     */
+    private void incrementUserFollowersCount(String userId) {
+        try {
+            // Ensure user stats record exists
+            createStatsIfNotExists(userId);
+
+            // Increment the count
+            int rowsUpdated = userStatsRepository.incrementFollowers(userId);
+
+            if (rowsUpdated > 0) {
+                log.info("Successfully incremented followers count for userId: {}", userId);
+            } else {
+                log.warn("No rows updated when incrementing followers for userId: {}", userId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to increment followers count for userId: {}", userId, e);
+            throw new RuntimeException("Failed to update follower count", e);
+        }
+    }
+
+    /**
+     * Increment following count for a user with proper error handling
+     */
+    private void incrementUserFollowingCount(String userId) {
+        try {
+            // Ensure user stats record exists
+            createStatsIfNotExists(userId);
+
+            // Increment the count
+            int rowsUpdated = userStatsRepository.incrementFollowing(userId);
+
+            if (rowsUpdated > 0) {
+                log.info("Successfully incremented following count for userId: {}", userId);
+            } else {
+                log.warn("No rows updated when incrementing following for userId: {}", userId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to increment following count for userId: {}", userId, e);
+            throw new RuntimeException("Failed to update following count", e);
+        }
+    }
+
+    /**
+     * Decrement followers count for a user with proper error handling
+     */
+    private void decrementUserFollowersCount(String userId) {
+        try {
+            // Ensure user stats record exists
+            createStatsIfNotExists(userId);
+
+            // Decrement the count
+            int rowsUpdated = userStatsRepository.decrementFollowers(userId);
+
+            if (rowsUpdated > 0) {
+                log.info("Successfully decremented followers count for userId: {}", userId);
+            } else {
+                log.warn("No rows updated when decrementing followers for userId: {}", userId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to decrement followers count for userId: {}", userId, e);
+            // Don't throw - we don't want to fail the unfollow action if stats update fails
+        }
+    }
+
+    /**
+     * Decrement following count for a user with proper error handling
+     */
+    private void decrementUserFollowingCount(String userId) {
+        try {
+            // Ensure user stats record exists
+            createStatsIfNotExists(userId);
+
+            // Decrement the count
+            int rowsUpdated = userStatsRepository.decrementFollowing(userId);
+
+            if (rowsUpdated > 0) {
+                log.info("Successfully decremented following count for userId: {}", userId);
+            } else {
+                log.warn("No rows updated when decrementing following for userId: {}", userId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to decrement following count for userId: {}", userId, e);
+            // Don't throw - we don't want to fail the unfollow action if stats update fails
         }
     }
 
