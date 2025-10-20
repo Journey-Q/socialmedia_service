@@ -161,5 +161,28 @@ public class BucketListController {
         }
     }
 
+    /**
+     * Check if a post is saved in bucket list
+     */
+    @GetMapping("/is-saved")
+    public ResponseEntity<?> isSaved(@RequestParam Long userId, @RequestParam String postId) {
+        try {
+            boolean isSaved = bucketListService.isSaved(userId, postId);
+
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("success", true);
+            responseData.put("message", "Check completed successfully");
+            responseData.put("data", Map.of("isSaved", isSaved));
+
+            return ResponseEntity.ok(responseData);
+
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Error checking if post is saved: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
 
 }

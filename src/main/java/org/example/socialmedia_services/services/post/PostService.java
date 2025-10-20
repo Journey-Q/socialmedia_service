@@ -185,7 +185,7 @@ public class PostService {
     }
 
     // Optimized method to get post with all related data
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.SUPPORTS)
     public GetPostResponse getPostById(Long postId) {
         try {
             // Fetch post
